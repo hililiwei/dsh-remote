@@ -1,6 +1,38 @@
+﻿param(
+  [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\DSH Remote')
+)
+
 $ErrorActionPreference = 'Stop'
 $source = $PSScriptRoot
-$target = Join-Path $env:LOCALAPPDATA 'Programs\DSH Remote'
+
+$target = [Environment]::ExpandEnvironmentVariables($InstallDir).Trim()
+if ([string]::IsNullOrWhiteSpace($target)) {
+  throw '安装路径不能为空。'
+}
+if (-not [IO.Path]::IsPathRooted($target)) {
+  $target = Join-Path (Join-Path $env:LOCALAPPDATA 'Programs') $target
+}
+$target = [IO.Path]::GetFullPath($target).TrimEnd('\')
+
+$pathRoot = [IO.Path]::GetPathRoot($target).TrimEnd('\')
+if ($target -eq $pathRoot) {
+  throw '不能直接安装到磁盘根目录，请选择一个子目录。'
+}
+$systemRoot = [IO.Path]::GetFullPath($env:SystemRoot).TrimEnd('\')
+if ($target.StartsWith($systemRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+  throw '不能安装到 Windows 系统目录，请选择当前用户可写的目录。'
+}
+foreach ($programFiles in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+  if ($programFiles -and $target.StartsWith(
+      [IO.Path]::GetFullPath($programFiles).TrimEnd('\') + '\',
+      [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Program Files 需要管理员权限，请选择当前用户可写目录（例如 LocalAppData 或 D:\Apps）。'
+  }
+}
+if ($target.Equals([IO.Path]::GetFullPath($source).TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+  throw '安装目录不能与当前解压目录相同，请换一个目录。'
+}
+
 $appExe = Join-Path $target 'DSH Remote.exe'
 $startMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\DSH Remote.lnk'
 $desktop = Join-Path ([Environment]::GetFolderPath('Desktop')) 'DSH Remote.lnk'
@@ -53,5 +85,13 @@ Set-ItemProperty -Path $uninstallKey -Name UninstallString -Value "powershell.ex
 Set-ItemProperty -Path $uninstallKey -Name NoModify -Value 1 -Type DWord
 Set-ItemProperty -Path $uninstallKey -Name NoRepair -Value 1 -Type DWord
 
+if (-not (Test-Path $appExe)) {
+  throw "安装文件不完整：找不到 $appExe"
+}
+
 Write-Host 'Installed. Launching DSH Remote...'
-Start-Process -FilePath $appExe -ArgumentList '--no-sandbox' -WorkingDirectory $target
+try {
+  Start-Process -FilePath $appExe -ArgumentList '--no-sandbox' -WorkingDirectory $target
+} catch {
+  Write-Warning "安装已完成，但自动启动失败：$($_.Exception.Message)。请从开始菜单或桌面快捷方式启动。"
+}
