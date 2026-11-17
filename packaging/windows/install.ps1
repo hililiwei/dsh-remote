@@ -1,9 +1,26 @@
 ﻿param(
-  [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\DSH Remote')
+  [string]$InstallDir
 )
 
 $ErrorActionPreference = 'Stop'
 $source = $PSScriptRoot
+$defaultDir = Join-Path $env:LOCALAPPDATA 'Programs\DSH Remote'
+
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+  try {
+    Add-Type -AssemblyName Microsoft.VisualBasic
+    $InstallDir = [Microsoft.VisualBasic.Interaction]::InputBox(
+      "请输入 DSH Remote 安装路径：`n`n默认：$defaultDir`n`n留空或取消将不安装。",
+      'DSH Remote 安装',
+      $defaultDir
+    )
+  } catch {
+    $InstallDir = $defaultDir
+  }
+}
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+  throw '已取消安装。'
+}
 
 $target = [Environment]::ExpandEnvironmentVariables($InstallDir).Trim()
 if ([string]::IsNullOrWhiteSpace($target)) {

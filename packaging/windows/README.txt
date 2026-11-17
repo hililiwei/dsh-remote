@@ -4,10 +4,10 @@ DSH Remote — Windows 便携包
 这个目录是 DSH Remote 的完整 Windows 应用，不需要 NSIS 安装器。
 
 安装（当前用户，无需管理员）：
-  双击 install.cmd，按提示输入安装路径（直接回车使用默认路径）
+  双击 install.cmd，会弹出输入框让你确认/修改安装路径（默认已填好）
   或：
-  powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
-  powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -InstallDir "D:\Apps\DSH Remote"
+  powershell -NoProfile -Sta -ExecutionPolicy Bypass -File install.ps1
+  powershell -NoProfile -Sta -ExecutionPolicy Bypass -File install.ps1 -InstallDir "D:\Apps\DSH Remote"
 
 默认安装位置：%LOCALAPPDATA%\Programs\DSH Remote
 会创建开始菜单和桌面快捷方式，并在“设置 → 应用”里注册卸载项。
