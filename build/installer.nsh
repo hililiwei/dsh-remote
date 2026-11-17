@@ -1,3 +1,10 @@
+; The assisted installer shows an install-mode page unless we force the
+; current-user mode. Forcing it skips that page and goes straight to the
+; directory picker; the app is always per-user (no elevation).
+!macro customInstallMode
+  StrCpy $isForceCurrentInstall "1"
+!macroend
+
 !macro customInstall
   ; Some Windows corporate/insider environments terminate Electron's Chromium
   ; sandbox before app startup. The installed shortcuts therefore pass

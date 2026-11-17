@@ -51,9 +51,11 @@ portable:
 nsis:
   # Per-user install without an elevation prompt:
   # %LOCALAPPDATA%\Programs\DSH Remote
-  oneClick: true
+  oneClick: false
   perMachine: false
   allowElevation: false
+  allowToChangeInstallationDirectory: true
+  selectPerMachineByDefault: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: DSH Remote
