@@ -1,0 +1,42 @@
+{
+  "name": "dsh-remote",
+  "version": "0.1.0",
+  "description": "Cross-platform desktop shell for remote DeepSeek Harness web backends",
+  "main": "out/main/index.js",
+  "author": "DSH Remote",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev --noSandbox",
+    "build": "electron-vite build",
+    "start": "electron-vite preview --noSandbox",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "npm run build && node node_modules/@playwright/test/cli.js test",
+    "dist:win": "npm run build && electron-builder --win nsis --x64 -c.electronDist=node_modules/electron/dist",
+    "dist:portable": "npm run build && electron-builder --win portable --x64 -c.electronDist=node_modules/electron/dist",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip --universal",
+    "package:win-zip": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-win-zip.ps1",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@swc/core": "^1.15.0",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "png2icons": "^2.0.1",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

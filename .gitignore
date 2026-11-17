@@ -1,0 +1,13 @@
+node_modules/
+out/
+dist/
+release/
+test-results/
+playwright-report/
+.cache/
+.tmp-*
+*.log
+.DS_Store
+.env
+*.tmp
+*.corrupt-*

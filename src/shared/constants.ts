@@ -1,0 +1,9 @@
+export const APP_NAME = 'DSH Remote'
+export const APP_ID = 'com.dshremote.app'
+export const PRODUCT_NAME = 'DSH Remote'
+export const CONFIG_VERSION = 1
+export const TOKEN_QUERY = 'token'
+export const SESSION_PREFIX = 'persist:dsh-remote-'
+export const MANAGER_SIZE = { width: 980, height: 660 }
+export const AUTH_SIZE = { width: 620, height: 460 }
+export const USER_AGENT_SUFFIX = 'DSHRemote/0.1.0'

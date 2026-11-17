@@ -1,0 +1,89 @@
+# electron-builder configuration for DSH Remote.
+#
+# DSH Remote is a desktop shell that loads a remote `dsh web` UI; the app
+# itself only ships the Electron main/preload/renderer output in `out/`.
+#
+# Unsigned by design for v1: Windows users may see a SmartScreen prompt, macOS
+# builds are not signed or notarized. See docs/macos-unsigned.md.
+appId: com.dshremote.app
+productName: DSH Remote
+copyright: Copyright © 2026 DSH Remote
+
+directories:
+  output: dist
+  buildResources: build
+
+toolsets:
+  nsis: "1.2.1"
+
+
+
+# Only the compiled electron-vite output is packaged; `package.json` is added
+# by electron-builder automatically.
+files:
+  - out/**/*
+  - '!**/*.map'
+
+asar: true
+
+# Tray icons are loaded at runtime from process.resourcesPath/build/, so they
+# must live outside the asar archive. The installer/app icons (icon.ico,
+# icon.icns, icon.png) stay build-only resources.
+extraResources:
+  - from: build
+    to: build
+    filter:
+      - tray.png
+      - trayTemplate.png
+      - trayTemplate@2x.png
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: DSH-Remote-${version}-win-${arch}.${ext}
+
+portable:
+  artifactName: DSH-Remote-${version}-win-${arch}-portable.${ext}
+
+nsis:
+  # Per-user install without an elevation prompt:
+  # %LOCALAPPDATA%\Programs\DSH Remote
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DSH Remote
+  uninstallDisplayName: DSH Remote
+  deleteAppDataOnUninstall: false
+  artifactName: DSH-Remote-${version}-win-${arch}-setup.${ext}
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  include: build/installer.nsh
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+    - target: zip
+      arch:
+        - universal
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  artifactName: DSH-Remote-${version}-mac-${arch}.${ext}
+  darkModeSupport: true
+  # v1 ships unsigned, un-notarized builds. This is deliberate; do not add
+  # signing secrets here. See docs/macos-unsigned.md for the Gatekeeper
+  # workaround and for how to enable signing later.
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+
+dmg:
+  artifactName: DSH-Remote-${version}-mac-${arch}.${ext}
