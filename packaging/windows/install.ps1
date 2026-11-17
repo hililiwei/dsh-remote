@@ -55,6 +55,91 @@ $startMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\DSH R
 $desktop = Join-Path ([Environment]::GetFolderPath('Desktop')) 'DSH Remote.lnk'
 $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\DSHRemote'
 
+function Get-DshRemoteInstallations {
+  $roots = @(
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+  )
+  $result = @()
+  foreach ($root in $roots) {
+    if (-not (Test-Path $root)) { continue }
+    foreach ($key in Get-ChildItem $root -ErrorAction SilentlyContinue) {
+      $props = Get-ItemProperty $key.PSPath -ErrorAction SilentlyContinue
+      if ($props.DisplayName -like 'DSH Remote*') {
+        $result += [PSCustomObject]@{
+          Key = $key.PSPath
+          DisplayVersion = $props.DisplayVersion
+          InstallLocation = $props.InstallLocation
+          UninstallString = $props.UninstallString
+        }
+      }
+    }
+  }
+  return $result
+}
+
+function Remove-OldInstallations {
+  param(
+    [string]$SourceDir,
+    [string]$TargetDir
+  )
+
+  $entries = @(Get-DshRemoteInstallations)
+  foreach ($entry in $entries) {
+    $oldDir = $entry.InstallLocation
+    $isZipInstall = $entry.UninstallString -match 'uninstall\.ps1'
+    if ($oldDir -and $SourceDir.StartsWith($oldDir, [StringComparison]::OrdinalIgnoreCase)) {
+      continue
+    }
+
+    # Upgrading in place: stop the old app and overwrite; running an old ZIP
+    # uninstaller here could schedule a delayed rmdir that deletes the new copy.
+    if ($isZipInstall -and $oldDir -and
+        $oldDir.TrimEnd('\').Equals($TargetDir.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+      Write-Host 'Found previous DSH Remote in the target folder; updating in place.'
+      continue
+    }
+
+    Write-Host 'Found previous DSH Remote; removing it before installing...'
+    if ($oldDir) {
+      Get-Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -and $_.Path.StartsWith($oldDir, [StringComparison]::OrdinalIgnoreCase) } |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+      Start-Sleep -Milliseconds 300
+    }
+
+    if (-not $isZipInstall -and $entry.UninstallString) {
+      $exePath = $entry.UninstallString.Trim()
+      if ($exePath.StartsWith('"')) {
+        $close = $exePath.IndexOf('"', 1)
+        if ($close -gt 0) { $exePath = $exePath.Substring(1, $close - 1) }
+      } else {
+        $exePath = ($exePath -split ' ')[0]
+      }
+      if (Test-Path $exePath) {
+        try {
+          Start-Process -FilePath $exePath -ArgumentList '/S' -Wait -WindowStyle Hidden -ErrorAction Stop
+        } catch {
+          Write-Warning "Old uninstaller could not run: $($_.Exception.Message)"
+        }
+      }
+    }
+
+    if ($oldDir -and
+        -not $oldDir.TrimEnd('\').Equals($TargetDir.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase) -and
+        (Test-Path $oldDir)) {
+      Remove-Item -Recurse -Force $oldDir -ErrorAction SilentlyContinue
+    }
+
+    Remove-Item -Recurse -Force $entry.Key -ErrorAction SilentlyContinue
+    Remove-Item -Force $startMenu, $desktop -ErrorAction SilentlyContinue
+  }
+}
+
+Write-Host 'Checking for previous DSH Remote installation...'
+Remove-OldInstallations -SourceDir $source -TargetDir $target
+
 Write-Host 'Installing DSH Remote to' $target
 
 Get-Process -ErrorAction SilentlyContinue |
