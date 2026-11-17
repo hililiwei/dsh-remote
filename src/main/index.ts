@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeTheme } from 'electron'
+import { app, nativeTheme } from 'electron'
 import { APP_ID, APP_NAME } from '../shared/constants'
 import type { ThemeMode } from '../shared/types'
 import { closeAllAuthWindows } from './auth-window'
@@ -7,26 +7,19 @@ import { installMenu } from './menu'
 import { registerIpc } from './ipc'
 import { initLogger, logError, logInfo, logWarn } from './logger'
 import { initManagerWindow, showManager } from './manager-window'
-import {
-  applyUserDataOverride,
-  appIconFile,
-  configFile,
-  logFile
-} from './paths'
+import { applyUserDataOverride, configFile, logFile } from './paths'
 import { configureAppSecurity } from './security'
-import { ServerWindowManager } from './server-window'
 import { SessionManager } from './session-manager'
+import { TabManager } from './tab-manager'
 import { destroyTray, isTrayReady, refreshTray, setupTray } from './tray'
 
 applyUserDataOverride()
 app.setName(APP_NAME)
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
 
-
-
 let store: ConfigStore | null = null
 let sessions: SessionManager | null = null
-let serverWindows: ServerWindowManager | null = null
+let tabs: TabManager | null = null
 let isQuitting = false
 
 function applyTheme(theme: ThemeMode): void {
@@ -40,18 +33,18 @@ function requestedServerId(argv: string[]): string | undefined {
 }
 
 async function openRequestedServer(id: string): Promise<void> {
-  if (!store || !serverWindows) return
+  if (!store || !tabs) return
   const server = store.getServer(id)
   if (!server) {
     showManager()
     return
   }
-  await serverWindows.open(server)
+  await tabs.open(server)
 }
 
 function afterServersChanged(): void {
-  if (!store || !serverWindows) return
-  const deps = { store, serverWindows }
+  if (!store || !tabs) return
+  const deps = { store, tabs }
   installMenu(deps)
   refreshTray(deps)
 }
@@ -65,7 +58,7 @@ async function bootstrap(): Promise<void> {
   applyTheme(store.getSettings().theme)
 
   sessions = new SessionManager()
-  serverWindows = new ServerWindowManager({
+  tabs = new TabManager({
     store,
     sessions,
     onServersChanged: afterServersChanged
@@ -73,13 +66,13 @@ async function bootstrap(): Promise<void> {
   initManagerWindow(store)
   configureAppSecurity(store, afterServersChanged)
 
-  const deps = { store, serverWindows }
+  const deps = { store, tabs }
   setupTray(deps)
   installMenu(deps)
   registerIpc({
     store,
     sessions,
-    serverWindows,
+    tabs,
     applyTheme,
     refreshMenu: () => installMenu(deps),
     refreshTray: () => refreshTray(deps)
@@ -104,16 +97,36 @@ async function bootstrap(): Promise<void> {
     return
   }
 
-  if (settings.autoConnect && settings.defaultServerId) {
-    const server = store.getServer(settings.defaultServerId)
-    if (server) {
+  if (settings.autoConnect) {
+    const saved = settings.openTabs
+      .map((id) => store!.getServer(id))
+      .filter((server): server is NonNullable<typeof server> => Boolean(server))
+    const restored = saved.length > 0
+    const toOpen = restored
+      ? saved
+      : settings.defaultServerId
+        ? [store.getServer(settings.defaultServerId)].filter(
+            (server): server is NonNullable<typeof server> => Boolean(server)
+          )
+        : []
+
+    if (toOpen.length > 0) {
       try {
-        await serverWindows.open(server)
+        await Promise.all(
+          toOpen.map((server) =>
+            tabs!.open(server).catch((error) => {
+              logWarn(`Auto-connect failed for ${server.name}: ${String(error)}`)
+            })
+          )
+        )
+        const active =
+          restored && settings.activeTabId && store!.getServer(settings.activeTabId)
+            ? settings.activeTabId
+            : toOpen[0].id
+        tabs!.activate(active)
         return
       } catch (error) {
         logWarn(`Auto-connect failed: ${String(error)}`)
-        showManager()
-        return
       }
     }
   }
@@ -134,11 +147,8 @@ if (!gotLock) {
         })
         return
       }
-      const target = BrowserWindow.getAllWindows().find((win) => win.isVisible())
-      if (target) {
-        if (target.isMinimized()) target.restore()
-        target.show()
-        target.focus()
+      if (tabs?.hasTabs()) {
+        tabs.show()
       } else {
         showManager()
       }
@@ -146,23 +156,17 @@ if (!gotLock) {
   })
 
   app.on('activate', () => {
-    const windows = BrowserWindow.getAllWindows().filter((win) => !win.isDestroyed())
-    if (windows.length === 0) {
-      showManager()
+    if (tabs?.hasTabs()) {
+      tabs.show()
       return
     }
-    const visible = windows.find((win) => win.isVisible())
-    if (visible) {
-      visible.focus()
-    } else {
-      showManager()
-    }
+    showManager()
   })
 
   app.on('before-quit', () => {
     isQuitting = true
     closeAllAuthWindows()
-    serverWindows?.closeAll()
+    tabs?.closeAll()
   })
 
   app.on('will-quit', () => {
@@ -189,7 +193,4 @@ if (!gotLock) {
       logError('Application bootstrap failed', error)
       app.quit()
     })
-
-  // Keep the icon association available to Windows even before a window exists.
-  void appIconFile()
 }

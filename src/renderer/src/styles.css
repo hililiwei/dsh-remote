@@ -1883,3 +1883,167 @@ code {
     transition-duration: 0.01ms !important;
   }
 }
+/* ------------------------------------------------------------------ *
+ * Shell tab bar (view=tabs). The shell BrowserWindow hosts this local
+ * renderer at the top; remote WebContentsViews are laid out below 44px.
+ * ------------------------------------------------------------------ */
+
+body.tabs-mode {
+  overflow: hidden;
+  background: var(--bg-sidebar);
+  user-select: none;
+}
+
+.tabbar {
+  box-sizing: border-box;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.tabbar__brand {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.tabbar__strip {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.tabbar__strip::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 0 1 auto;
+  min-width: 108px;
+  max-width: 230px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  outline: none;
+}
+
+.tab:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tab.is-active {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.tab__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab__close {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tab__close:hover {
+  background: var(--surface-active);
+  color: var(--text);
+}
+
+.tabbar__add,
+.tabbar__manage,
+.tabbar__error {
+  flex: 0 0 auto;
+  height: 28px;
+  min-width: 28px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tabbar__add {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tabbar__add:hover,
+.tabbar__manage:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tabbar__right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tabbar__reload {
+  font-size: 16px;
+}
+
+.tabbar__error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.tabbar .status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+}

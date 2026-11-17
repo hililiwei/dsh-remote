@@ -20,6 +20,7 @@ import ServerForm from './components/ServerForm'
 import type { ServerFormIntent, ServerFormValues } from './components/ServerForm'
 import ServerList from './components/ServerList'
 import SettingsPanel from './components/SettingsPanel'
+import TabsView from './components/TabsView'
 import type { SettingsPatch } from './components/SettingsPanel'
 import { parseWindowView } from './utils'
 
@@ -577,6 +578,9 @@ export default function App() {
 
   if (windowView.view === 'auth') {
     return <AuthView serverId={windowView.serverId} reason={windowView.reason} />
+  }
+  if (windowView.view === 'tabs') {
+    return <TabsView />
   }
 
   return <ManagerApp />

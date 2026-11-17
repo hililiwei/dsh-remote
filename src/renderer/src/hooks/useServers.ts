@@ -18,6 +18,10 @@ function normalizeSettings(value: AppSettings | null | undefined): AppSettings {
     ...(typeof value.defaultServerId === 'string'
       ? { defaultServerId: value.defaultServerId }
       : {}),
+    openTabs: Array.isArray(value.openTabs)
+      ? value.openTabs.filter((id): id is string => typeof id === 'string')
+      : [],
+    ...(typeof value.activeTabId === 'string' ? { activeTabId: value.activeTabId } : {}),
     autoConnect: typeof value.autoConnect === 'boolean' ? value.autoConnect : fallback.autoConnect,
     closeToTray:
       typeof value.closeToTray === 'boolean' ? value.closeToTray : fallback.closeToTray,

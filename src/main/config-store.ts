@@ -26,6 +26,7 @@ function defaults(): AppSettings {
   return {
     version: 1,
     servers: [],
+    openTabs: [],
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
@@ -115,6 +116,17 @@ function sanitize(raw: unknown): AppSettings {
     )
       ? raw.defaultServerId
       : undefined
+  }
+
+  if (Array.isArray(raw.openTabs)) {
+    const known = new Set(settings.servers.map((server) => server.id))
+    for (const id of raw.openTabs) {
+      if (typeof id !== 'string' || !known.has(id) || settings.openTabs.includes(id)) continue
+      settings.openTabs.push(id)
+    }
+  }
+  if (typeof raw.activeTabId === 'string' && settings.openTabs.includes(raw.activeTabId)) {
+    settings.activeTabId = raw.activeTabId
   }
 
   if (typeof raw.autoConnect === 'boolean') settings.autoConnect = raw.autoConnect
@@ -227,8 +239,28 @@ export class ConfigStore {
     if (index === -1) return
     this.settings.servers.splice(index, 1)
     if (this.settings.defaultServerId === id) delete this.settings.defaultServerId
+    this.settings.openTabs = this.settings.openTabs.filter((tabId) => tabId !== id)
+    if (this.settings.activeTabId === id) delete this.settings.activeTabId
     delete this.settings.windowBounds[id]
     await this.persist()
+  }
+
+  async setOpenTabs(ids: string[], activeTabId?: string): Promise<AppSettings> {
+    await this.ensureLoaded()
+    const known = new Set(this.settings.servers.map((server) => server.id))
+    const next: string[] = []
+    for (const id of ids) {
+      if (!known.has(id) || next.includes(id)) continue
+      next.push(id)
+    }
+    this.settings.openTabs = next
+    if (activeTabId && next.includes(activeTabId)) {
+      this.settings.activeTabId = activeTabId
+    } else {
+      delete this.settings.activeTabId
+    }
+    await this.persist()
+    return this.getSettings()
   }
 
   async setDefaultServer(id: string | null): Promise<AppSettings> {

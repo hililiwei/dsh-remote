@@ -13,7 +13,8 @@ export interface ParsedWindowView {
 export function parseWindowView(search: string): ParsedWindowView {
   const params = new URLSearchParams(search)
   const requested = params.get('view')
-  const view: WindowView = requested === 'auth' ? 'auth' : 'manager'
+  const view: WindowView =
+    requested === 'auth' ? 'auth' : requested === 'tabs' ? 'tabs' : 'manager'
 
   const rawServerId = params.get('serverId')
   const serverId = rawServerId && rawServerId.trim() !== '' ? rawServerId.trim() : undefined

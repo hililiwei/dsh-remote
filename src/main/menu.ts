@@ -11,16 +11,11 @@ import type { ConfigStore } from './config-store'
 import { logError } from './logger'
 import { showManager } from './manager-window'
 import { partitionFor } from './session-manager'
-import type { ServerWindowManager } from './server-window'
+import type { TabManager } from './tab-manager'
 
 export interface MenuDeps {
   store: ConfigStore
-  serverWindows: ServerWindowManager
-}
-
-function focusedServerId(serverWindows: ServerWindowManager): string | undefined {
-  const focused = BrowserWindow.getFocusedWindow()
-  return focused ? serverWindows.serverIdForWindow(focused) : undefined
+  tabs: TabManager
 }
 
 function helpDialog(): void {
@@ -42,18 +37,21 @@ export function installMenu(deps: MenuDeps): void {
   const openServer = (id: string): void => {
     const server = deps.store.getServer(id)
     if (!server) return
-    void deps.serverWindows.open(server).catch((error) => {
+    void deps.tabs.open(server).catch((error) => {
       logError(`Menu failed to open server ${id}`, error)
     })
   }
 
-  const serverItems: MenuItemConstructorOptions[] = settings.servers.map((server, index) => ({
+  const serverItems: MenuItemConstructorOptions[] = settings.servers.map((server) => ({
     label: server.name,
-    accelerator: index < 9 ? `CmdOrCtrl+${index + 1}` : undefined,
     click: () => openServer(server.id)
   }))
 
-  const currentServerId = (): string | undefined => focusedServerId(deps.serverWindows)
+  const currentServerId = (): string | undefined => {
+    const focused = BrowserWindow.getFocusedWindow()
+    if (!focused || focused !== deps.tabs.getShellWindow()) return undefined
+    return deps.tabs.activeServerId()
+  }
 
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
@@ -84,6 +82,20 @@ export function installMenu(deps: MenuDeps): void {
       label: '服务器',
       submenu: [
         {
+          label: '新建标签页…',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => deps.tabs.showAddMenu()
+        },
+        {
+          label: '关闭当前标签页',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => {
+            const id = currentServerId()
+            if (id) deps.tabs.close(id)
+          }
+        },
+        { type: 'separator' },
+        {
           label: '服务器管理…',
           accelerator: isMac ? 'Cmd+,' : 'Ctrl+,',
           click: () => showManager()
@@ -92,22 +104,19 @@ export function installMenu(deps: MenuDeps): void {
         ...(serverItems.length > 0 ? serverItems : [{ label: '还没有服务器', enabled: false }]),
         { type: 'separator' },
         {
-          label: '在浏览器中打开当前服务器',
+          label: '在浏览器中打开当前标签页',
           click: () => {
             const id = currentServerId()
-            if (id) deps.serverWindows.openInBrowser(id)
+            if (id) deps.tabs.openInBrowser(id)
           }
         },
         {
-          label: '重新加载当前服务器',
+          label: '重新加载当前标签页',
           accelerator: 'CmdOrCtrl+R',
-          click: () => {
-            const id = currentServerId()
-            if (id) deps.serverWindows.reload(id)
-          }
+          click: () => deps.tabs.reloadActive()
         },
         {
-          label: '清除当前服务器登录状态…',
+          label: '清除当前标签页登录状态…',
           click: async () => {
             const id = currentServerId()
             if (!id) return
@@ -128,6 +137,7 @@ export function installMenu(deps: MenuDeps): void {
             await target.clearStorageData()
             await target.clearCache()
             await target.closeAllConnections()
+            deps.tabs.reload(server.id)
           }
         }
       ]
@@ -147,8 +157,11 @@ export function installMenu(deps: MenuDeps): void {
     {
       label: '视图',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
+        {
+          label: '重新加载当前标签页',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => deps.tabs.reloadActive()
+        },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -169,7 +182,7 @@ export function installMenu(deps: MenuDeps): void {
               { role: 'front' as const },
               { role: 'window' as const }
             ]
-          : [{ role: 'close' as const }])
+          : [])
       ]
     },
     {

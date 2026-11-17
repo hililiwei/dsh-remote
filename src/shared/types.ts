@@ -1,6 +1,7 @@
 export type ProxyMode = 'system' | 'direct'
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type ServerStatus = 'online' | 'auth-required' | 'forbidden' | 'error' | 'offline'
+export type TabStatus = 'loading' | 'online' | 'auth-required' | 'error'
 export type AuthReason = 'first' | 'expired'
 
 export interface WindowBounds {
@@ -33,10 +34,21 @@ export interface AppSettings {
   version: 1
   servers: ServerProfile[]
   defaultServerId?: string
+  /** Server ids whose tabs were open when the app last quit. */
+  openTabs: string[]
+  activeTabId?: string
   autoConnect: boolean
   closeToTray: boolean
   theme: ThemeMode
   windowBounds: Record<string, WindowBounds>
+}
+
+export interface TabInfo {
+  id: string
+  name: string
+  url: string
+  status: TabStatus
+  active: boolean
 }
 
 export interface TestResult {
@@ -57,7 +69,7 @@ export interface AppInfo {
   isDev: boolean
 }
 
-export type WindowView = 'manager' | 'auth'
+export type WindowView = 'manager' | 'auth' | 'tabs'
 
 export interface WindowContext {
   view: WindowView
@@ -95,8 +107,15 @@ export interface DshRemoteApi {
   ): Promise<AppSettings>
   openManager(): Promise<void>
   openExternal(url: string): Promise<void>
+  listTabs(): Promise<TabInfo[]>
+  activateTab(id: string): Promise<void>
+  closeTab(id: string): Promise<void>
+  addTab(): Promise<void>
+  reloadTab(id: string): Promise<void>
+  showTabMenu(id: string): Promise<void>
   onServersChanged(callback: (servers: ServerProfile[]) => void): () => void
   onSettingsChanged(callback: (settings: AppSettings) => void): () => void
+  onTabsChanged(callback: (tabs: TabInfo[]) => void): () => void
 }
 
 declare global {

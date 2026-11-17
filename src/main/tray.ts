@@ -4,20 +4,29 @@ import type { ConfigStore } from './config-store'
 import { logInfo, logWarn } from './logger'
 import { showManager } from './manager-window'
 import { trayIconFile } from './paths'
-import type { ServerWindowManager } from './server-window'
+import type { TabManager } from './tab-manager'
 
 export interface TrayDeps {
   store: ConfigStore
-  serverWindows: ServerWindowManager
+  tabs: TabManager
 }
 
 let tray: Tray | null = null
+
+function showApp(deps: TrayDeps): void {
+  if (deps.tabs.hasTabs()) deps.tabs.show()
+  else showManager()
+}
 
 function buildMenu(deps: TrayDeps): Menu {
   const servers = deps.store.getSettings().servers
   return Menu.buildFromTemplate([
     {
-      label: '打开服务器管理',
+      label: '打开 DSH Remote',
+      click: () => showApp(deps)
+    },
+    {
+      label: '服务器管理',
       click: () => showManager()
     },
     { type: 'separator' },
@@ -25,7 +34,7 @@ function buildMenu(deps: TrayDeps): Menu {
       ? servers.map((server) => ({
           label: server.name,
           click: () => {
-            void deps.serverWindows.open(server).catch(() => undefined)
+            void deps.tabs.open(server).catch(() => undefined)
           }
         }))
       : [{ label: '还没有服务器', enabled: false }]),
@@ -56,8 +65,8 @@ export function setupTray(deps: TrayDeps): void {
   tray.setToolTip(APP_NAME)
   tray.setContextMenu(buildMenu(deps))
   if (process.platform !== 'darwin') {
-    tray.on('click', () => showManager())
-    tray.on('double-click', () => showManager())
+    tray.on('click', () => showApp(deps))
+    tray.on('double-click', () => showApp(deps))
   }
   logInfo('Tray ready')
 }

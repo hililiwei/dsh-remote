@@ -13,7 +13,7 @@
 1. 管理远程服务器连接配置；
 2. 首次连接时接收 `dsh web` 启动打印的带 token URL；
 3. 用持久 cookie 保持登录态；
-4. 在独立窗口中加载远程 DSH Web UI；
+4. 在主窗口的多个标签页中加载远程 DSH Web UI；
 5. 提供桌面壳应有的菜单、托盘、窗口记忆、下载/外链/证书/代理处理；
 6. 产出 Windows 安装包和可构建的 macOS 未签名包。
 
@@ -36,7 +36,7 @@
 - 连接成功后 cookie 持久化；同一服务器重启客户端一般无需再次粘贴 token。
 - 登录态失效（HTTP 401）时给出明确的重连入口。
 - 主窗口直接加载远程 DSH UI，不复制前端资源，不绑定 DSH 版本。
-- 桌面体验：独立窗口、菜单、托盘、窗口位置记忆、单实例、外链走系统浏览器、下载可用。
+- 桌面体验：单主窗口多标签页、菜单、托盘、窗口位置记忆、单实例、外链走系统浏览器、下载可用。
 - 每个服务器隔离 session/cookie；支持系统代理/直连切换；支持显式信任自签名证书。
 
 ### 非目标
@@ -87,7 +87,10 @@
 
 - **Manager window**：本地 React 页面，负责服务器列表、表单、设置、首次引导。`preload` 通过 `contextBridge` 暴露最小 API；`nodeIntegration: false`、`contextIsolation: true`、`sandbox: true`。
 - **Auth window**：复用同一个 renderer，通过 `?view=auth&serverId=...&reason=...` 进入认证视图。提交后由 main 校验并连接。
-- **Server window**：每个服务器一个 `BrowserWindow`，直接 `loadURL(baseUrl)`；无 preload、无 Node、`sandbox: true`。远程页面不能访问任何本地能力。
+- **Tab shell**：一个 `BrowserWindow` 承载本地 Tab 栏；每个服务器对应一个 `WebContentsView`（`loadURL(baseUrl)`），无 preload、无 Node、`sandbox: true`。远程页面不能访问任何本地能力。
+  - Tab 栏是 shell 自己的本地 renderer（`?view=tabs`），remote view 从 `TAB_BAR_HEIGHT`（44px）以下布局。
+  - `TabManager` 管理 tab 顺序、active、状态、session、401/认证和持久化的 `openTabs` / `activeTabId`。
+  - 关闭最后一个 tab 时显示服务器管理窗口；菜单/托盘切换 tab；`Ctrl/Cmd+T/W/1..9` 为标签快捷键。
 - **Tray**：服务器管理入口、服务器列表、退出。macOS 使用 template image。
 
 ### 5.2 服务器配置

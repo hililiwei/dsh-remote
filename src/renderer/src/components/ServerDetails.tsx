@@ -242,7 +242,7 @@ export default function ServerDetails({
       ) : null}
 
       <p className="details-footnote">
-        连接会在独立窗口中加载远程 DSH 页面。远程页面无法访问本机文件或 Node API。
+        连接会在主窗口的标签页中加载远程 DSH 页面。远程页面无法访问本机文件或 Node API。
       </p>
     </section>
   )

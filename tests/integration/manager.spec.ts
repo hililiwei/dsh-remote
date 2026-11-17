@@ -1,7 +1,8 @@
-import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
+import { test, expect, type ElectronApplication } from '@playwright/test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { startFakeDsh } from '../helpers/fake-dsh-server'
+import { launchApp, managerPage } from './helpers'
 
 let app: ElectronApplication
 let userData: string
@@ -10,16 +11,7 @@ let fake: Awaited<ReturnType<typeof startFakeDsh>> | undefined
 test.beforeEach(async () => {
   fake = undefined
   userData = await mkdtemp(join(process.cwd(), '.tmp-e2e-'))
-  app = await electron.launch({
-    args: ['--no-sandbox', '.'],
-    env: {
-      ...process.env,
-      DSH_REMOTE_USER_DATA: userData,
-      DSH_REMOTE_KEEP_MANAGER: '1',
-      ELECTRON_RENDERER_URL: '',
-      NODE_ENV: 'test'
-    }
-  })
+  app = await launchApp(userData)
 })
 
 test.afterEach(async () => {
@@ -29,8 +21,7 @@ test.afterEach(async () => {
 })
 
 test('adds, edits and deletes a server from the manager', async () => {
-  const manager = await app.firstWindow()
-  await expect(manager.getByTestId('manager-root')).toBeVisible()
+  const manager = await managerPage(app)
   await expect(manager.getByTestId('empty-state')).toBeVisible()
 
   await manager.getByTestId('add-server').click()
@@ -54,7 +45,7 @@ test('adds, edits and deletes a server from the manager', async () => {
 
 test('rejects a token URL for a different host in the auth view', async () => {
   fake = await startFakeDsh()
-  const manager = await app.firstWindow()
+  const manager = await managerPage(app)
   await manager.getByTestId('add-server').click()
   await manager.getByTestId('name-input').fill('Example DSH')
   await manager.getByTestId('url-input').fill(fake.baseUrl)

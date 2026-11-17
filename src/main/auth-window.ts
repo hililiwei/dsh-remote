@@ -17,7 +17,8 @@ export function hasAuthWindow(serverId: string): boolean {
 export function openAuthWindow(
   store: ConfigStore,
   serverId: string,
-  reason: AuthReason
+  reason: AuthReason,
+  parentWindow?: BrowserWindow
 ): BrowserWindow {
   const existing = authWindows.get(serverId)
   if (existing && !existing.isDestroyed()) {
@@ -30,7 +31,7 @@ export function openAuthWindow(
   const server = store.getServer(serverId)
   if (!server) throw new Error('Server not found')
 
-  const parent = getManagerWindow()
+  const parent = parentWindow ?? getManagerWindow()
   const win = new BrowserWindow({
     width: AUTH_SIZE.width,
     height: AUTH_SIZE.height,

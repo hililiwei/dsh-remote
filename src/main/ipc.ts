@@ -21,15 +21,15 @@ import { logError, logInfo } from './logger'
 import { showManager } from './manager-window'
 import { rendererIndexFile } from './paths'
 import { checkServer } from './server-status'
-import { ServerWindowManager } from './server-window'
 import { SessionManager } from './session-manager'
+import { TabManager } from './tab-manager'
 import { parseConnectionInput, redactUrl, UrlInputError } from './url-tools'
 import { getWindowContext } from './window-registry'
 
 export interface IpcDeps {
   store: ConfigStore
   sessions: SessionManager
-  serverWindows: ServerWindowManager
+  tabs: TabManager
   applyTheme: (theme: ThemeMode) => void
   refreshMenu: () => void
   refreshTray: () => void
@@ -50,7 +50,13 @@ const CHANNELS = [
   'servers:test',
   'servers:connect',
   'auth:submit',
-  'auth:cancel'
+  'auth:cancel',
+  'tabs:list',
+  'tabs:activate',
+  'tabs:close',
+  'tabs:add',
+  'tabs:reload',
+  'tabs:menu'
 ] as const
 
 function isTrustedRenderer(event: IpcMainInvokeEvent): boolean {
@@ -124,7 +130,7 @@ function asServerInput(value: unknown): ServerInput {
 }
 
 export function registerIpc(deps: IpcDeps): void {
-  const { store, sessions, serverWindows, applyTheme, refreshMenu, refreshTray } = deps
+  const { store, sessions, tabs, applyTheme, refreshMenu, refreshTray } = deps
 
   const broadcastServers = (): void => {
     const servers = store.getSettings().servers
@@ -201,6 +207,7 @@ export function registerIpc(deps: IpcDeps): void {
     const id = requireString(rawId, '服务器 ID')
     if (!store.getServer(id)) throw new ConfigStoreError('服务器不存在或已被删除。')
     await sessions.clear(id)
+    tabs.reload(id)
     return true
   })
 
@@ -228,13 +235,16 @@ export function registerIpc(deps: IpcDeps): void {
 
   handle('servers:save', async (_event, rawInput): Promise<SaveServerResult> => {
     const result = await store.saveServer(asServerInput(rawInput))
+    void tabs.refreshServer(result.server).catch((error) => {
+      logError(`Failed to refresh open tab ${result.server.id}`, error)
+    })
     afterServersChanged()
     return result
   })
 
   handle('servers:delete', async (_event, rawId): Promise<boolean> => {
     const id = requireString(rawId, '服务器 ID')
-    serverWindows.close(id)
+    tabs.close(id)
     await sessions.clear(id)
     await store.deleteServer(id)
     afterServersChanged()
@@ -275,9 +285,9 @@ export function registerIpc(deps: IpcDeps): void {
     const tokenUrl =
       typeof rawTokenUrl === 'string' && rawTokenUrl.trim() !== '' ? rawTokenUrl : undefined
     if (tokenUrl) {
-      await serverWindows.openWithLaunchUrl(server, tokenUrl)
+      await tabs.openWithLaunchUrl(server, tokenUrl)
     } else {
-      await serverWindows.open(server)
+      await tabs.open(server)
     }
     return true
   })
@@ -292,7 +302,7 @@ export function registerIpc(deps: IpcDeps): void {
 
     try {
       const tokenUrl = requireString(rawTokenUrl, '启动 URL')
-      await serverWindows.openWithLaunchUrl(server, tokenUrl)
+      await tabs.openWithLaunchUrl(server, tokenUrl)
       closeAuthWindow(server.id)
       return { ok: true }
     } catch (error) {
@@ -305,6 +315,37 @@ export function registerIpc(deps: IpcDeps): void {
     if (context?.view === 'auth' && context.serverId) {
       closeAuthWindow(context.serverId)
     }
+    return true
+  })
+
+  handle('tabs:list', () => tabs.listTabs())
+
+  handle('tabs:activate', (_event, rawId): boolean => {
+    const id = requireString(rawId, '服务器 ID')
+    tabs.activate(id)
+    return true
+  })
+
+  handle('tabs:close', (_event, rawId): boolean => {
+    const id = requireString(rawId, '服务器 ID')
+    tabs.close(id)
+    return true
+  })
+
+  handle('tabs:add', (): boolean => {
+    tabs.showAddMenu()
+    return true
+  })
+
+  handle('tabs:reload', (_event, rawId): boolean => {
+    const id = requireString(rawId, '服务器 ID')
+    tabs.reload(id)
+    return true
+  })
+
+  handle('tabs:menu', (_event, rawId): boolean => {
+    const id = requireString(rawId, '服务器 ID')
+    tabs.showTabMenu(id)
     return true
   })
 

@@ -4,6 +4,7 @@ import type {
   SaveServerResult,
   ServerInput,
   ServerProfile,
+  TabInfo,
   TestResult,
   TestServerInput,
   WindowContext,
@@ -28,6 +29,7 @@ export function emptySettings(): AppSettings {
   return {
     version: 1,
     servers: [],
+    openTabs: [],
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
@@ -126,6 +128,39 @@ export const api = {
 
   openExternal(url: string): Promise<void> {
     return requireMethod('openExternal')(url)
+  },
+
+  listTabs(): Promise<TabInfo[]> {
+    const source = bridge()
+    if (typeof source?.listTabs === 'function') return source.listTabs()
+    return Promise.resolve([])
+  },
+
+  activateTab(id: string): Promise<void> {
+    return requireMethod('activateTab')(id)
+  },
+
+  closeTab(id: string): Promise<void> {
+    return requireMethod('closeTab')(id)
+  },
+
+  addTab(): Promise<void> {
+    return requireMethod('addTab')()
+  },
+
+  reloadTab(id: string): Promise<void> {
+    return requireMethod('reloadTab')(id)
+  },
+
+  showTabMenu(id: string): Promise<void> {
+    return requireMethod('showTabMenu')(id)
+  },
+
+  onTabsChanged(callback: (tabs: TabInfo[]) => void): () => void {
+    const source = bridge()
+    if (typeof source?.onTabsChanged !== 'function') return () => undefined
+    const unsubscribe = source.onTabsChanged(callback)
+    return typeof unsubscribe === 'function' ? unsubscribe : () => undefined
   },
 
   onServersChanged(callback: (servers: ServerProfile[]) => void): () => void {

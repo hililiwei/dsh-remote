@@ -17,6 +17,7 @@ describe('ConfigStore', () => {
 
     expect(settings.version).toBe(1)
     expect(settings.servers).toEqual([])
+    expect(settings.openTabs).toEqual([])
     expect(settings.autoConnect).toBe(true)
     expect(settings.closeToTray).toBe(false)
     expect(settings.theme).toBe('system')
@@ -137,6 +138,36 @@ describe('ConfigStore', () => {
       width: 900,
       height: 700
     })
+  })
+
+  it('persists open tabs and the active tab, filtering unknown ids', async () => {
+    const { file, store } = await makeStore()
+    await store.load()
+    const one = await store.saveServer({ name: 'One', url: 'https://one.example.com/' })
+    const two = await store.saveServer({ name: 'Two', url: 'https://two.example.com/' })
+
+    await store.setOpenTabs([two.server.id, one.server.id, 'missing', two.server.id], two.server.id)
+
+    expect(store.getSettings().openTabs).toEqual([two.server.id, one.server.id])
+    expect(store.getSettings().activeTabId).toBe(two.server.id)
+
+    const reloaded = new ConfigStore(file)
+    const settings = await reloaded.load()
+    expect(settings.openTabs).toEqual([two.server.id, one.server.id])
+    expect(settings.activeTabId).toBe(two.server.id)
+  })
+
+  it('drops a deleted server from open tabs', async () => {
+    const { store } = await makeStore()
+    await store.load()
+    const one = await store.saveServer({ name: 'One', url: 'https://one.example.com/' })
+    const two = await store.saveServer({ name: 'Two', url: 'https://two.example.com/' })
+    await store.setOpenTabs([one.server.id, two.server.id], one.server.id)
+
+    await store.deleteServer(one.server.id)
+
+    expect(store.getSettings().openTabs).toEqual([two.server.id])
+    expect(store.getSettings().activeTabId).toBeUndefined()
   })
 
   it('updates only supported settings keys', async () => {

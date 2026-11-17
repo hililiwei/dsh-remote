@@ -7,6 +7,7 @@ import type {
   SaveServerResult,
   ServerProfile,
   ServerInput,
+  TabInfo,
   TestResult,
   TestServerInput,
   WindowContext
@@ -36,6 +37,19 @@ const api: DshRemoteApi = {
   openManager: () => ipcRenderer.invoke('app:open-manager') as Promise<void>,
   openExternal: (url: string) =>
     ipcRenderer.invoke('app:open-external', url) as Promise<void>,
+  listTabs: () => ipcRenderer.invoke('tabs:list') as Promise<TabInfo[]>,
+  activateTab: (id: string) => ipcRenderer.invoke('tabs:activate', id) as Promise<void>,
+  closeTab: (id: string) => ipcRenderer.invoke('tabs:close', id) as Promise<void>,
+  addTab: () => ipcRenderer.invoke('tabs:add') as Promise<void>,
+  reloadTab: (id: string) => ipcRenderer.invoke('tabs:reload', id) as Promise<void>,
+  showTabMenu: (id: string) => ipcRenderer.invoke('tabs:menu', id) as Promise<void>,
+  onTabsChanged: (callback) => {
+    const listener = (_event: IpcRendererEvent, tabs: TabInfo[]): void => {
+      callback(tabs)
+    }
+    ipcRenderer.on('tabs:changed', listener)
+    return () => ipcRenderer.removeListener('tabs:changed', listener)
+  },
   onServersChanged: (callback) => {
     const listener = (_event: IpcRendererEvent, servers: ServerProfile[]): void => {
       callback(servers)

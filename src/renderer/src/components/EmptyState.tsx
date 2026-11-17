@@ -17,7 +17,7 @@ export default function EmptyState({ hasServers, onAdd, onOpenHelp }: EmptyState
       <p className="empty__lead">
         {hasServers
           ? '从左侧选择服务器查看详情，或添加一个新的远程 DSH 后端。'
-          : '添加远程 dsh web 服务器，DSH Remote 会用它换取登录状态，并在独立窗口中打开 DSH。'}
+          : '添加远程 dsh web 服务器，DSH Remote 会用它换取登录状态，并在顶部标签页中打开 DSH。'}
       </p>
 
       {!hasServers ? (
