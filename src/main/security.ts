@@ -1,7 +1,7 @@
 import { app, dialog } from 'electron'
 import type { ConfigStore } from './config-store'
 import { logWarn } from './logger'
-import { sameOrigin } from './url-tools'
+import { sameServerAuthority } from './url-tools'
 
 /**
  * App-wide security decisions. Remote pages never receive Node or a preload,
@@ -17,7 +17,7 @@ export function configureAppSecurity(
 
     const server = store
       .getSettings()
-      .servers.find((candidate) => sameOrigin(candidate.baseUrl, url))
+      .servers.find((candidate) => sameServerAuthority(candidate.baseUrl, url))
 
     if (!server) {
       logWarn(`Rejected certificate for unconfigured origin ${url}: ${error}`)

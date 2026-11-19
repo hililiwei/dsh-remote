@@ -108,6 +108,30 @@ export function sameOrigin(a: string, b: string): boolean {
   }
 }
 
+function transportFamily(protocol: string): string {
+  if (protocol === 'wss:') return 'https:'
+  if (protocol === 'ws:') return 'http:'
+  return protocol
+}
+
+/**
+ * Certificates are verified for both the HTTPS page and its WSS connection.
+ * The two URLs differ in scheme, so compare the transport family plus the
+ * exact host:port instead of the serialized origin.
+ */
+export function sameServerAuthority(a: string, b: string): boolean {
+  try {
+    const first = new URL(a)
+    const second = new URL(b)
+    return (
+      transportFamily(first.protocol) === transportFamily(second.protocol) &&
+      first.host === second.host
+    )
+  } catch {
+    return false
+  }
+}
+
 export function defaultNameForUrl(input: string): string {
   try {
     const url = new URL(input)

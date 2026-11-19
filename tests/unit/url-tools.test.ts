@@ -5,6 +5,7 @@ import {
   parseConnectionInput,
   redactUrl,
   sameOrigin,
+  sameServerAuthority,
   UrlInputError
 } from '../../src/main/url-tools'
 
@@ -103,5 +104,30 @@ describe('sameOrigin', () => {
 
   it('returns false for invalid input', () => {
     expect(sameOrigin('nope', 'https://h/')).toBe(false)
+  })
+})
+
+describe('sameServerAuthority', () => {
+  it('treats an HTTPS page and its WSS socket as the same authority', () => {
+    expect(sameServerAuthority('https://59.110.48.216:3080/', 'wss://59.110.48.216:3080/api/remote.mux')).toBe(
+      true
+    )
+  })
+
+  it('treats an HTTP page and its WS socket as the same authority', () => {
+    expect(sameServerAuthority('http://h:3080/', 'ws://h:3080/socket')).toBe(true)
+  })
+
+  it('rejects a different host or port', () => {
+    expect(sameServerAuthority('https://h:3080/', 'wss://other:3080/socket')).toBe(false)
+    expect(sameServerAuthority('https://h:3080/', 'wss://h:3081/socket')).toBe(false)
+  })
+
+  it('rejects a different transport family', () => {
+    expect(sameServerAuthority('http://h:3080/', 'wss://h:3080/socket')).toBe(false)
+  })
+
+  it('returns false for invalid input', () => {
+    expect(sameServerAuthority('nope', 'wss://h/')).toBe(false)
   })
 })
