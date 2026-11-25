@@ -408,7 +408,13 @@ function ManagerApp() {
     if (savingSettings) return
 
     const previous = settings
-    applySettings({ ...settings, ...patch })
+    const optimistic = { ...settings, ...patch }
+    if (patch.shellWidth === null) {
+      const { shellWidth: _ignored, ...withoutWidth } = optimistic
+      applySettings(withoutWidth)
+    } else {
+      applySettings(optimistic as AppSettings)
+    }
     setSavingSettings(true)
 
     void (async () => {

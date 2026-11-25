@@ -2047,3 +2047,33 @@ body.tabs-mode {
   height: 7px;
   flex: 0 0 auto;
 }
+
+.width-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.width-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.width-custom input {
+  width: 112px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.width-custom input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}

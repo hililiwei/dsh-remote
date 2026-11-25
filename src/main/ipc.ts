@@ -216,14 +216,21 @@ export function registerIpc(deps: IpcDeps): void {
   handle('settings:update', async (_event, rawPatch): Promise<AppSettings> => {
     const patch = (typeof rawPatch === 'object' && rawPatch !== null
       ? rawPatch
-      : {}) as AppSettings
+      : {}) as AppSettings & { shellWidth?: number | null }
+    const hasWidth = Object.prototype.hasOwnProperty.call(patch, 'shellWidth')
     const settings = await store.updateSettings({
       ...(typeof patch.autoConnect === 'boolean' ? { autoConnect: patch.autoConnect } : {}),
       ...(typeof patch.closeToTray === 'boolean' ? { closeToTray: patch.closeToTray } : {}),
       ...(patch.theme === 'system' || patch.theme === 'light' || patch.theme === 'dark'
         ? { theme: patch.theme }
-        : {})
+        : {}),
+      ...(patch.shellWidth === null
+        ? { shellWidth: null }
+        : typeof patch.shellWidth === 'number'
+          ? { shellWidth: patch.shellWidth }
+          : {})
     })
+    if (hasWidth) tabs.applyWindowWidth(settings.shellWidth)
     applyTheme(settings.theme)
     broadcastSettings(settings)
     refreshMenu()

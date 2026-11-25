@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
 import type { AppInfo, AppSettings, ThemeMode } from '@shared/types'
 
 export type SettingsPatch = Partial<
   Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>
->
+> & {
+  shellWidth?: number | null
+}
 
 interface SettingsPanelProps {
   settings: AppSettings
@@ -38,6 +41,20 @@ export default function SettingsPanel({
   saving,
   onChange
 }: SettingsPanelProps) {
+  const [customWidth, setCustomWidth] = useState(
+    settings.shellWidth ? String(settings.shellWidth) : ''
+  )
+
+  useEffect(() => {
+    setCustomWidth(settings.shellWidth ? String(settings.shellWidth) : '')
+  }, [settings.shellWidth])
+
+  const applyCustomWidth = (): void => {
+    const value = Number(customWidth)
+    if (!Number.isFinite(value) || value < 900 || value > 4000) return
+    onChange({ shellWidth: Math.round(value) })
+  }
+
   return (
     <section className="settings" data-testid="settings-panel">
       <header className="settings-header">
@@ -50,7 +67,7 @@ export default function SettingsPanel({
           <div className="setting-row__text">
             <span className="setting-row__title">启动时自动连接默认服务器</span>
             <span className="setting-row__desc">
-              应用启动后直接打开默认服务器的窗口；没有默认服务器时显示本页面。
+              应用启动后直接打开默认服务器的标签页；没有默认服务器时显示本页面。
             </span>
           </div>
           <label className="switch">
@@ -113,6 +130,72 @@ export default function SettingsPanel({
             ))}
           </div>
         </div>
+
+        <div className="setting-row setting-row--stack">
+          <div className="setting-row__text">
+            <span className="setting-row__title">主窗口宽度</span>
+            <span className="setting-row__desc">
+              “自适应”按屏幕约 85% 开窗；也可以固定为 1280 / 1440 / 1600 / 1920，
+              或输入 900–4000 的像素值。修改会立即调整已打开的主窗口。
+            </span>
+          </div>
+          <div className="width-control">
+            <div
+              className="segmented"
+              role="group"
+              aria-label="主窗口宽度"
+              data-testid="settings-width"
+            >
+              <button
+                type="button"
+                aria-pressed={settings.shellWidth == null}
+                onClick={() => onChange({ shellWidth: null })}
+                disabled={saving}
+                data-testid="settings-width-auto"
+              >
+                自适应
+              </button>
+              {[1280, 1440, 1600, 1920].map((widthValue) => (
+                <button
+                  key={widthValue}
+                  type="button"
+                  aria-pressed={settings.shellWidth === widthValue}
+                  onClick={() => onChange({ shellWidth: widthValue })}
+                  disabled={saving}
+                  data-testid={`settings-width-${widthValue}`}
+                >
+                  {widthValue}
+                </button>
+              ))}
+            </div>
+            <div className="width-custom">
+              <input
+                type="number"
+                min={900}
+                max={4000}
+                step={10}
+                value={customWidth}
+                onChange={(event) => setCustomWidth(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') applyCustomWidth()
+                }}
+                placeholder="自定义 px"
+                aria-label="自定义主窗口宽度"
+                disabled={saving}
+                data-testid="settings-width-input"
+              />
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={applyCustomWidth}
+                disabled={saving}
+                data-testid="settings-width-apply"
+              >
+                应用
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="settings-group settings-group--about">
@@ -137,7 +220,7 @@ export default function SettingsPanel({
         </dl>
         <p className="settings-note">
           DSH Remote 只保存服务器地址与偏好，不保存启动 token。远程 DSH
-          页面在独立、无 Node 权限的窗口中加载。
+          页面在主窗口标签页中加载，无 Node 权限。
         </p>
       </div>
     </section>

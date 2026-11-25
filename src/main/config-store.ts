@@ -132,6 +132,14 @@ function sanitize(raw: unknown): AppSettings {
   if (typeof raw.autoConnect === 'boolean') settings.autoConnect = raw.autoConnect
   if (typeof raw.closeToTray === 'boolean') settings.closeToTray = raw.closeToTray
   if (THEMES.includes(raw.theme as ThemeMode)) settings.theme = raw.theme as ThemeMode
+  if (
+    typeof raw.shellWidth === 'number' &&
+    Number.isFinite(raw.shellWidth) &&
+    raw.shellWidth >= 900 &&
+    raw.shellWidth <= 5000
+  ) {
+    settings.shellWidth = Math.round(raw.shellWidth)
+  }
 
   if (isRecord(raw.windowBounds)) {
     for (const [key, value] of Object.entries(raw.windowBounds)) {
@@ -286,12 +294,24 @@ export class ConfigStore {
   }
 
   async updateSettings(
-    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>>
+    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>> & {
+      shellWidth?: number | null
+    }
   ): Promise<AppSettings> {
     await this.ensureLoaded()
     if (typeof patch.autoConnect === 'boolean') this.settings.autoConnect = patch.autoConnect
     if (typeof patch.closeToTray === 'boolean') this.settings.closeToTray = patch.closeToTray
     if (THEMES.includes(patch.theme as ThemeMode)) this.settings.theme = patch.theme as ThemeMode
+    if (patch.shellWidth === null) {
+      delete this.settings.shellWidth
+    } else if (
+      typeof patch.shellWidth === 'number' &&
+      Number.isFinite(patch.shellWidth) &&
+      patch.shellWidth >= 900 &&
+      patch.shellWidth <= 5000
+    ) {
+      this.settings.shellWidth = Math.round(patch.shellWidth)
+    }
     await this.persist()
     return this.getSettings()
   }

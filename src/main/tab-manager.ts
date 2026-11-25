@@ -3,6 +3,7 @@ import {
   clipboard,
   dialog,
   Menu,
+  screen,
   shell,
   WebContentsView,
   type MenuItemConstructorOptions,
@@ -26,8 +27,9 @@ import { partitionFor, SessionManager } from './session-manager'
 import { redactUrl, sameOrigin } from './url-tools'
 import { attachBoundsPersistence, restoredBounds } from './window-bounds'
 import { setWindowContext } from './window-registry'
+import { clampShellWidth, defaultShellSize } from './window-size'
 
-const SHELL_SIZE = { width: 1280, height: 840 }
+const SHELL_BOUNDS_KEY = 'shell-v2'
 const NAVIGATION_TIMEOUT_MS = 30_000
 
 export interface TabManagerDeps {
@@ -166,6 +168,37 @@ export class TabManager {
 
   show(): void {
     this.showShell()
+  }
+
+  /**
+   * Apply a fixed width, or the automatic 85% width when `requested` is null.
+   * Keeps the current height and clamps the window into the current display.
+   */
+  applyWindowWidth(requested?: number | null): void {
+    const shellWindow = this.getShellWindow()
+    if (!shellWindow) return
+
+    const bounds = shellWindow.getBounds()
+    const workArea = screen.getDisplayMatching(bounds).workArea
+    const targetWidth = clampShellWidth(
+      requested,
+      workArea,
+      defaultShellSize(workArea).width
+    )
+    if (shellWindow.isMaximized()) shellWindow.unmaximize()
+
+    const maxX = Math.max(workArea.x, workArea.x + workArea.width - targetWidth)
+    const maxY = Math.max(workArea.y, workArea.y + workArea.height - bounds.height)
+    shellWindow.setBounds(
+      {
+        x: Math.min(Math.max(bounds.x, workArea.x), maxX),
+        y: Math.min(Math.max(bounds.y, workArea.y), maxY),
+        width: targetWidth,
+        height: bounds.height
+      },
+      false
+    )
+    this.layout()
   }
 
   close(serverId: string): void {
@@ -361,9 +394,17 @@ export class TabManager {
     const existing = this.getShellWindow()
     if (existing) return existing
 
-    const bounds = restoredBounds(this.deps.store, 'shell', SHELL_SIZE)
+    const workArea = screen.getPrimaryDisplay().workArea
+    const fallback = defaultShellSize(workArea)
+    const saved = restoredBounds(this.deps.store, SHELL_BOUNDS_KEY, fallback)
+    const width = clampShellWidth(
+      this.deps.store.getSettings().shellWidth,
+      workArea,
+      saved.width
+    )
     const shellWindow = new BrowserWindow({
-      ...bounds,
+      ...saved,
+      width,
       minWidth: 900,
       minHeight: 560,
       show: false,
@@ -381,7 +422,7 @@ export class TabManager {
     })
     this.shell = shellWindow
     setWindowContext(shellWindow.webContents.id, { view: 'tabs' })
-    attachBoundsPersistence(this.deps.store, 'shell', shellWindow)
+    attachBoundsPersistence(this.deps.store, SHELL_BOUNDS_KEY, shellWindow)
 
     shellWindow.webContents.setWindowOpenHandler(({ url }) => {
       try {
@@ -767,7 +808,13 @@ export class TabManager {
   private viewBounds(): { x: number; y: number; width: number; height: number } {
     const shellWindow = this.getShellWindow()
     if (!shellWindow) {
-      return { x: 0, y: TAB_BAR_HEIGHT, width: SHELL_SIZE.width, height: SHELL_SIZE.height - TAB_BAR_HEIGHT }
+      const fallback = defaultShellSize(screen.getPrimaryDisplay().workArea)
+      return {
+        x: 0,
+        y: TAB_BAR_HEIGHT,
+        width: fallback.width,
+        height: fallback.height - TAB_BAR_HEIGHT
+      }
     }
     const { width, height } = shellWindow.getContentBounds()
     return {

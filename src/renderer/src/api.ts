@@ -117,7 +117,9 @@ export const api = {
   },
 
   updateSettings(
-    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>>
+    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>> & {
+      shellWidth?: number | null
+    }
   ): Promise<AppSettings> {
     return requireMethod('updateSettings')(patch)
   },

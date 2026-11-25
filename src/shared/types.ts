@@ -37,6 +37,8 @@ export interface AppSettings {
   /** Server ids whose tabs were open when the app last quit. */
   openTabs: string[]
   activeTabId?: string
+  /** Fixed main-window width in px; undefined means use the saved/automatic width. */
+  shellWidth?: number
   autoConnect: boolean
   closeToTray: boolean
   theme: ThemeMode
@@ -103,7 +105,9 @@ export interface DshRemoteApi {
   cancelAuth(): Promise<void>
   clearServerSession(id: string): Promise<void>
   updateSettings(
-    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>>
+    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>> & {
+      shellWidth?: number | null
+    }
   ): Promise<AppSettings>
   openManager(): Promise<void>
   openExternal(url: string): Promise<void>

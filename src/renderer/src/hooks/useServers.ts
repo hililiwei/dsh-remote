@@ -22,6 +22,9 @@ function normalizeSettings(value: AppSettings | null | undefined): AppSettings {
       ? value.openTabs.filter((id): id is string => typeof id === 'string')
       : [],
     ...(typeof value.activeTabId === 'string' ? { activeTabId: value.activeTabId } : {}),
+    ...(typeof value.shellWidth === 'number' && Number.isFinite(value.shellWidth)
+      ? { shellWidth: value.shellWidth }
+      : {}),
     autoConnect: typeof value.autoConnect === 'boolean' ? value.autoConnect : fallback.autoConnect,
     closeToTray:
       typeof value.closeToTray === 'boolean' ? value.closeToTray : fallback.closeToTray,
