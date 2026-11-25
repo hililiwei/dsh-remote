@@ -38,13 +38,26 @@
 }
 
 html,
-body,
-#pet-root {
+body {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: transparent;
+}
+
+/* Let the root shrink-wrap its children so its bottom edge, and therefore
+   the pet, stays anchored while the card grows upward. */
+#pet-root {
+  height: auto;
+}
+
+/* The window changes height when the card opens. Keep the document from
+   scrolling to a focused control, which would visually move the pet. */
+html,
+body {
+  position: fixed;
+  inset: 0;
 }
 
 body {
@@ -60,6 +73,10 @@ body {
 }
 
 .pet-root {
+  --pet-button-width: 500px;
+  --pet-button-height: 300px;
+  --pet-card-width: 540px;
+  --pet-bubble-width: 320px;
   position: absolute;
   right: 20px;
   bottom: 20px;
@@ -69,10 +86,30 @@ body {
   gap: 10px;
 }
 
+.pet-root[data-size='small'] {
+  --pet-button-width: 400px;
+  --pet-button-height: 240px;
+  --pet-card-width: 440px;
+  --pet-bubble-width: 270px;
+}
+
+.pet-root[data-size='medium'] {
+  --pet-button-width: 500px;
+  --pet-button-height: 300px;
+  --pet-card-width: 540px;
+  --pet-bubble-width: 320px;
+}
+
+.pet-root[data-size='large'] {
+  --pet-button-width: 600px;
+  --pet-button-height: 360px;
+  --pet-card-width: 640px;
+  --pet-bubble-width: 380px;
+}
+
 .pet-bubble,
 .pet-card {
   box-sizing: border-box;
-  max-width: 300px;
   border: 1px solid var(--pet-border);
   border-radius: 12px;
   background: var(--pet-card-bg);
@@ -81,8 +118,13 @@ body {
 }
 
 .pet-bubble {
+  position: relative;
+  z-index: 3;
   flex: none;
+  max-width: var(--pet-bubble-width);
   padding: 10px 14px;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 13px;
   line-height: 1.55;
   color: var(--pet-text);
@@ -101,9 +143,12 @@ body {
 }
 
 .pet-card {
+  position: relative;
+  z-index: 2;
   flex: none;
-  width: 540px;
-  max-height: min(620px, calc(100vh - 330px));
+  width: var(--pet-card-width);
+  max-width: var(--pet-card-width);
+  max-height: min(620px, calc(100vh - var(--pet-button-height) - 160px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -498,8 +543,8 @@ body {
   position: relative;
   flex: none;
   display: block;
-  width: 500px;
-  height: 300px;
+  width: var(--pet-button-width);
+  height: var(--pet-button-height);
   padding: 0;
   border: 0;
   background: transparent;

@@ -1,5 +1,5 @@
 import { BaseWindow, BrowserWindow, screen, type Rectangle } from 'electron'
-import type { PetSnapshot } from '../../shared/pet'
+import type { PetCardBounds, PetSize, PetSnapshot } from '../../shared/pet'
 import type { WindowBounds } from '../../shared/types'
 import { APP_NAME } from '../../shared/constants'
 import type { ConfigStore } from '../config-store'
@@ -8,9 +8,48 @@ import { petPreloadFile } from '../paths'
 import { loadPetRenderer } from '../renderer-loader'
 import { setWindowContext } from '../window-registry'
 
-export const PET_SIZE = { width: 600, height: 400 }
-export const PET_EXPANDED_HEIGHT = 960
+export interface PetDimensions {
+  width: number
+  height: number
+  expandedHeight: number
+  buttonWidth: number
+  buttonHeight: number
+  cardWidth: number
+}
+
+export const PET_DIMENSIONS: Record<PetSize, PetDimensions> = {
+  small: {
+    width: 480,
+    height: 360,
+    expandedHeight: 820,
+    buttonWidth: 400,
+    buttonHeight: 240,
+    cardWidth: 440
+  },
+  medium: {
+    width: 600,
+    height: 430,
+    expandedHeight: 960,
+    buttonWidth: 500,
+    buttonHeight: 300,
+    cardWidth: 540
+  },
+  large: {
+    width: 720,
+    height: 510,
+    expandedHeight: 1120,
+    buttonWidth: 600,
+    buttonHeight: 360,
+    cardWidth: 640
+  }
+}
 const PET_MARGIN = 20
+
+export const PET_SIZE = {
+  width: PET_DIMENSIONS.medium.width,
+  height: PET_DIMENSIONS.medium.height
+}
+export const PET_EXPANDED_HEIGHT = PET_DIMENSIONS.medium.expandedHeight
 
 export interface PetWindowController {
   show(): void
@@ -21,6 +60,8 @@ export interface PetWindowController {
   setAlwaysOnTop(enabled: boolean): void
   setIgnoreMouseEvents(ignore: boolean): void
   setExpanded(expanded: boolean): void
+  setPetSize(size: PetSize): void
+  setCardBounds(bounds: PetCardBounds | null): void
   beginDrag(): void
   dragTo(screenX: number, screenY: number): void
   endDrag(): void
@@ -38,32 +79,34 @@ function visibleOnSomeDisplay(bounds: WindowBounds): boolean {
   })
 }
 
-function defaultBounds(): Rectangle {
+function defaultBounds(size: PetSize): Rectangle {
+  const dims = PET_DIMENSIONS[size]
   const area = screen.getPrimaryDisplay().workArea
   return {
-    width: PET_SIZE.width,
-    height: PET_SIZE.height,
-    x: Math.round(area.x + area.width - PET_SIZE.width - PET_MARGIN),
-    y: Math.round(area.y + area.height - PET_SIZE.height - PET_MARGIN)
+    width: dims.width,
+    height: dims.height,
+    x: Math.round(area.x + area.width - dims.width - PET_MARGIN),
+    y: Math.round(area.y + area.height - dims.height - PET_MARGIN)
   }
 }
 
-function restoredPetBounds(store: ConfigStore): Rectangle {
+function restoredPetBounds(store: ConfigStore, size: PetSize): Rectangle {
+  const dims = PET_DIMENSIONS[size]
   const saved = store.getSettings().windowBounds.pet
-  if (!saved || saved.x === undefined || saved.y === undefined) return defaultBounds()
-  if (!visibleOnSomeDisplay(saved)) return defaultBounds()
+  if (!saved || saved.x === undefined || saved.y === undefined) return defaultBounds(size)
+  if (!visibleOnSomeDisplay(saved)) return defaultBounds(size)
   const area = screen.getPrimaryDisplay().workArea
   const x = Math.min(
     Math.max(saved.x, area.x),
-    Math.max(area.x, area.x + area.width - PET_SIZE.width)
+    Math.max(area.x, area.x + area.width - dims.width)
   )
   const y = Math.min(
-    Math.max(saved.y + saved.height - PET_SIZE.height, area.y),
-    Math.max(area.y, area.y + area.height - PET_SIZE.height)
+    Math.max(saved.y + saved.height - dims.height, area.y),
+    Math.max(area.y, area.y + area.height - dims.height)
   )
   return {
-    width: PET_SIZE.width,
-    height: PET_SIZE.height,
+    width: dims.width,
+    height: dims.height,
     x,
     y
   }
@@ -75,10 +118,16 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   let wantedVisible = true
   let forceClose = false
   let alwaysOnTop = store.getSettings().pet.alwaysOnTop
+  let petSize = store.getSettings().pet.size
   let saveTimer: NodeJS.Timeout | undefined
   let dragStart: { cursor: { x: number; y: number }; bounds: Rectangle } | null = null
+  let expanded = false
+  let cardBounds: Rectangle | null = null
+  let clickThroughTimer: NodeJS.Timeout | undefined
+  let ignoringMouse = false
 
-  const bounds = restoredPetBounds(store)
+  const bounds = restoredPetBounds(store, petSize)
+  const initialDims = PET_DIMENSIONS[petSize]
   // A hidden owned window keeps the pet out of the Windows taskbar even when
   // Chromium ignores skipTaskbar for a transparent always-on-top window.
   const owner =
@@ -95,10 +144,10 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   win = new BrowserWindow({
     ...bounds,
     ...(owner ? { parent: owner } : {}),
-    minWidth: PET_SIZE.width,
-    minHeight: PET_SIZE.height,
-    maxWidth: PET_SIZE.width,
-    maxHeight: PET_EXPANDED_HEIGHT,
+    minWidth: initialDims.width,
+    minHeight: initialDims.height,
+    maxWidth: initialDims.width,
+    maxHeight: initialDims.expandedHeight,
     frame: false,
     transparent: true,
     resizable: false,
@@ -124,7 +173,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   setWindowContext(current.webContents.id, { view: 'pet' })
   current.setSkipTaskbar(true)
   try {
-    current.setAlwaysOnTop(alwaysOnTop, 'screen-saver')
+    current.setAlwaysOnTop(alwaysOnTop, 'floating')
   } catch {
     current.setAlwaysOnTop(alwaysOnTop)
   }
@@ -141,8 +190,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       if (current.isDestroyed() || !alwaysOnTop) return
       try {
         current.setSkipTaskbar(true)
-        current.setAlwaysOnTop(true, 'screen-saver')
-        current.moveTop()
+        if (!current.isAlwaysOnTop()) current.setAlwaysOnTop(true, 'floating')
       } catch {
         // The window may be closing.
       }
@@ -153,15 +201,48 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     topGuard = undefined
   }
   if (alwaysOnTop) startTopGuard()
-  current.on('blur', () => {
-    if (current.isDestroyed() || !alwaysOnTop) return
-    try {
-      current.setAlwaysOnTop(true, 'screen-saver')
-      current.moveTop()
-    } catch {
-      // The window may be closing.
+  const inside = (point: { x: number; y: number }, rect: Rectangle): boolean =>
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+
+  const updateClickThrough = (): void => {
+    if (!win || win.isDestroyed() || !win.isVisible()) return
+    const point = screen.getCursorScreenPoint()
+    const area = win.getContentBounds()
+    const dims = PET_DIMENSIONS[petSize]
+    const petRect: Rectangle = {
+      x: area.x + area.width - PET_MARGIN - dims.buttonWidth,
+      y: area.y + area.height - PET_MARGIN - dims.buttonHeight,
+      width: dims.buttonWidth,
+      height: dims.buttonHeight
     }
-  })
+    const cardRect: Rectangle | null =
+      expanded && cardBounds
+        ? {
+            x: area.x + cardBounds.x,
+            y: area.y + cardBounds.y,
+            width: cardBounds.width,
+            height: cardBounds.height
+          }
+        : null
+    const interactive = inside(point, petRect) || Boolean(cardRect && inside(point, cardRect))
+    const nextIgnoring = !interactive
+    if (nextIgnoring === ignoringMouse) return
+    ignoringMouse = nextIgnoring
+    win.setIgnoreMouseEvents(nextIgnoring)
+  }
+
+  const startClickThroughGuard = (): void => {
+    if (clickThroughTimer !== undefined) return
+    updateClickThrough()
+    clickThroughTimer = setInterval(updateClickThrough, 16)
+  }
+  const stopClickThroughGuard = (): void => {
+    if (clickThroughTimer !== undefined) clearInterval(clickThroughTimer)
+    clickThroughTimer = undefined
+  }
 
   current.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   current.webContents.on('will-navigate', (event) => {
@@ -198,11 +279,14 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       current.showInactive()
       current.setSkipTaskbar(true)
     }
+    startClickThroughGuard()
   })
   current.on('show', () => {
     current.setSkipTaskbar(true)
     current.setIgnoreMouseEvents(false)
+    startClickThroughGuard()
   })
+  current.on('hide', stopClickThroughGuard)
   
 
   const scheduleBoundsSave = (): void => {
@@ -223,6 +307,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   })
   current.on('closed', () => {
     stopTopGuard()
+    stopClickThroughGuard()
     if (owner && !owner.isDestroyed()) owner.destroy()
     if (win === current) win = null
   })
@@ -243,6 +328,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     },
     hide(): void {
       wantedVisible = false
+      stopClickThroughGuard()
       if (!win || win.isDestroyed()) return
       win.hide()
     },
@@ -263,7 +349,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       alwaysOnTop = enabled
       if (!win || win.isDestroyed()) return
       try {
-        win.setAlwaysOnTop(enabled, 'screen-saver')
+        win.setAlwaysOnTop(enabled, 'floating')
       } catch {
         win.setAlwaysOnTop(enabled)
       }
@@ -300,28 +386,65 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       dragStart = null
       scheduleBoundsSave()
     },
-    setExpanded(expanded: boolean): void {
+    setExpanded(nextExpanded: boolean): void {
+      expanded = nextExpanded
+      if (!nextExpanded) cardBounds = null
       if (!win || win.isDestroyed()) return
+      const dims = PET_DIMENSIONS[petSize]
       const currentBounds = win.getBounds()
       const workArea = screen.getDisplayMatching(currentBounds).workArea
-      const height = expanded
-        ? Math.min(PET_EXPANDED_HEIGHT, Math.max(PET_SIZE.height, workArea.height - PET_MARGIN * 2))
-        : PET_SIZE.height
+      const height = nextExpanded
+        ? Math.min(dims.expandedHeight, Math.max(dims.height, workArea.height - PET_MARGIN * 2))
+        : dims.height
       const bottom = currentBounds.y + currentBounds.height
       const y = Math.max(workArea.y, Math.min(bottom - height, workArea.y + workArea.height - height))
       const x = Math.min(
         Math.max(currentBounds.x, workArea.x),
-        Math.max(workArea.x, workArea.x + workArea.width - PET_SIZE.width)
+        Math.max(workArea.x, workArea.x + workArea.width - dims.width)
       )
-      win.setBounds(
-        {
-          x,
-          y,
-          width: PET_SIZE.width,
-          height
-        },
-        false
+      win.setBounds({ x, y, width: dims.width, height }, false)
+      updateClickThrough()
+    },
+    setPetSize(size: PetSize): void {
+      if (size === petSize) return
+      petSize = size
+      cardBounds = null
+      if (!win || win.isDestroyed()) return
+      const dims = PET_DIMENSIONS[size]
+      win.setMinimumSize(dims.width, dims.height)
+      win.setMaximumSize(dims.width, dims.expandedHeight)
+      const currentBounds = win.getBounds()
+      const workArea = screen.getDisplayMatching(currentBounds).workArea
+      const height = expanded
+        ? Math.min(dims.expandedHeight, Math.max(dims.height, workArea.height - PET_MARGIN * 2))
+        : dims.height
+      const bottom = currentBounds.y + currentBounds.height
+      const y = Math.max(workArea.y, Math.min(bottom - height, workArea.y + workArea.height - height))
+      const x = Math.min(
+        Math.max(currentBounds.x, workArea.x),
+        Math.max(workArea.x, workArea.x + workArea.width - dims.width)
       )
+      win.setBounds({ x, y, width: dims.width, height }, false)
+      updateClickThrough()
+    },
+    setCardBounds(bounds: PetCardBounds | null): void {
+      if (
+        !bounds ||
+        !Number.isFinite(bounds.x) ||
+        !Number.isFinite(bounds.y) ||
+        !Number.isFinite(bounds.width) ||
+        !Number.isFinite(bounds.height)
+      ) {
+        cardBounds = null
+      } else {
+        cardBounds = {
+          x: bounds.x,
+          y: bounds.y,
+          width: Math.max(0, bounds.width),
+          height: Math.max(0, bounds.height)
+        }
+      }
+      updateClickThrough()
     },
     isPetWindow(candidate: BrowserWindow): boolean {
       return Boolean(win && !win.isDestroyed() && candidate === win)
@@ -330,6 +453,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       forceClose = true
       wantedVisible = false
       stopTopGuard()
+      stopClickThroughGuard()
       if (saveTimer) clearTimeout(saveTimer)
       if (win && !win.isDestroyed()) win.destroy()
       win = null

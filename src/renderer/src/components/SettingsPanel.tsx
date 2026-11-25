@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppInfo, AppSettings, AppSettingsPatch, ThemeMode } from '@shared/types'
+import type { PetSize } from '@shared/pet'
 
 export type SettingsPatch = AppSettingsPatch
 
@@ -10,6 +11,12 @@ interface SettingsPanelProps {
   saving: boolean
   onChange: (patch: SettingsPatch) => void
 }
+
+const PET_SIZE_OPTIONS: { value: PetSize; label: string; testId: string }[] = [
+  { value: 'small', label: '小', testId: 'settings-pet-size-small' },
+  { value: 'medium', label: '中', testId: 'settings-pet-size-medium' },
+  { value: 'large', label: '大', testId: 'settings-pet-size-large' }
+]
 
 const THEME_OPTIONS: { value: ThemeMode; label: string; testId: string }[] = [
   { value: 'system', label: '跟随系统', testId: 'settings-theme-system' },
@@ -141,6 +148,34 @@ export default function SettingsPanel({
 
         <div className="setting-row setting-row--stack">
           <div className="setting-row__text">
+            <span className="setting-row__title">宠物尺寸</span>
+            <span className="setting-row__desc">
+              小 / 中 / 大；切换后宠物窗口会立即调整，并记住下次启动的大小。
+            </span>
+          </div>
+          <div
+            className="segmented"
+            role="group"
+            aria-label="宠物尺寸"
+            data-testid="settings-pet-size"
+          >
+            {PET_SIZE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={settings.pet.size === option.value}
+                onClick={() => onChange({ pet: { size: option.value } })}
+                disabled={saving || !settings.pet.enabled}
+                data-testid={option.testId}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="setting-row setting-row--stack">
+          <div className="setting-row__text">
             <span className="setting-row__title">界面主题</span>
             <span className="setting-row__desc">
               “跟随系统”会随操作系统外观自动切换。
@@ -262,3 +297,4 @@ export default function SettingsPanel({
     </section>
   )
 }
+

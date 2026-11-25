@@ -36,12 +36,14 @@ export class PetManager {
     servers: [],
     openTabs: [],
     counts: { needsYou: 0, running: 0, done: 0, idle: 0, total: 0 },
+    petSize: 'medium',
     updatedAt: Date.now()
   }
   
 
   constructor(private readonly deps: PetManagerDeps) {
     this.settings = deps.store.getSettings()
+    this.snapshot.petSize = this.settings.pet.size
   }
 
   start(): void {
@@ -56,7 +58,10 @@ export class PetManager {
       this.window = createPetWindow(this.deps.store)
       this.window.setAlwaysOnTop(settings.pet.alwaysOnTop)
     }
-    if (this.window) this.window.setAlwaysOnTop(settings.pet.alwaysOnTop)
+    if (this.window) {
+      this.window.setAlwaysOnTop(settings.pet.alwaysOnTop)
+      this.window.setPetSize(settings.pet.size)
+    }
     if (this.enabled) {
       this.ensureWindowShown()
       this.reconcileServers()
@@ -108,6 +113,10 @@ export class PetManager {
 
   setExpanded(expanded: boolean): void {
     this.window?.setExpanded(expanded)
+  }
+
+  setCardBounds(bounds: Parameters<PetWindowController['setCardBounds']>[0]): void {
+    this.window?.setCardBounds(bounds)
   }
 
   beginDrag(): void {
@@ -293,7 +302,7 @@ handleTabsChanged(): void {
       name: tab.name,
       active: tab.active
     }))
-    this.snapshot = mergePetSnapshots(servers, openTabs)
+    this.snapshot = mergePetSnapshots(servers, openTabs, this.settings.pet.size)
     this.window?.send(this.snapshot)
   }
 

@@ -4,6 +4,7 @@ import type {
   PetServerStatus,
   PetSession,
   PetSessionState,
+  PetSize,
   PetSnapshot
 } from '@shared/pet'
 import manifest from './animation-manifest.json'
@@ -50,6 +51,7 @@ let snapshot: PetSnapshot = {
   servers: [],
   openTabs: [],
   counts: EMPTY_COUNTS,
+  petSize: 'medium',
   updatedAt: 0
 }
 let root: HTMLDivElement
@@ -288,6 +290,24 @@ function scheduleAutoClose(): void {
   }, AUTO_CLOSE_MS)
 }
 
+function applyPetSize(size: PetSize): void {
+  if (root) root.dataset.size = size
+}
+
+function reportCardBounds(): void {
+  if (!open || !card) {
+    window.dshPet.setCardBounds(null)
+    return
+  }
+  const rect = card.getBoundingClientRect()
+  window.dshPet.setCardBounds({
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height
+  })
+}
+
 function setOpen(next: boolean): void {
   open = next
   card.hidden = !open
@@ -297,8 +317,14 @@ function setOpen(next: boolean): void {
     cardSignature = ''
     renderCard(true)
     scheduleAutoClose()
+    window.scrollTo(0, 0)
+    window.requestAnimationFrame(() => {
+      window.scrollTo(0, 0)
+      reportCardBounds()
+    })
   } else {
     clearAutoClose()
+    window.dshPet.setCardBounds(null)
   }
 }
 
@@ -463,6 +489,7 @@ function renderCard(force = false): void {
     cardBody.append(section)
   }
   cardBody.scrollTop = scroll
+  window.requestAnimationFrame(reportCardBounds)
 }
 
 function renderCounts(): void {
@@ -482,6 +509,7 @@ function renderCounts(): void {
 }
 
 function render(): void {
+  applyPetSize(snapshot.petSize ?? 'medium')
   const nextState = stateOf(snapshot.counts)
   if (nextState !== currentState) {
     currentState = nextState
@@ -528,6 +556,7 @@ function build(): void {
   root = document.getElementById('pet-root') as HTMLDivElement
   root.replaceChildren()
   root.className = 'pet-root'
+  root.dataset.size = snapshot.petSize ?? 'medium'
 
   bubble = h('div', 'pet-bubble')
   bubble.hidden = true
@@ -556,6 +585,10 @@ function build(): void {
   card.append(head, countsEl, cardBody)
   card.addEventListener('mouseenter', clearAutoClose)
   card.addEventListener('mouseleave', scheduleAutoClose)
+  window.addEventListener('resize', () => {
+    window.scrollTo(0, 0)
+    if (open) window.requestAnimationFrame(reportCardBounds)
+  })
 
   button = h('button', 'pet-button')
   button.type = 'button'

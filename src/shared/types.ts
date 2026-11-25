@@ -1,4 +1,6 @@
 export type ProxyMode = 'system' | 'direct'
+import type { PetSize } from './pet'
+
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type ServerStatus = 'online' | 'auth-required' | 'forbidden' | 'error' | 'offline'
 export type TabStatus = 'loading' | 'online' | 'auth-required' | 'error'
@@ -33,6 +35,7 @@ export interface ServerInput {
 export interface PetSettings {
   enabled: boolean
   alwaysOnTop: boolean
+  size: PetSize
 }
 
 export interface AppSettings {

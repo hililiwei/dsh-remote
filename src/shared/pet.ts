@@ -1,3 +1,11 @@
+export type PetSize = 'small' | 'medium' | 'large'
+
+export const PET_SIZE_VALUES = ['small', 'medium', 'large'] as const
+
+export function isPetSize(value: unknown): value is PetSize {
+  return value === 'small' || value === 'medium' || value === 'large'
+}
+
 export type PetSessionState = 'needs-you' | 'running' | 'done' | 'idle'
 
 export type PetServerStatus =
@@ -53,6 +61,7 @@ export interface PetSnapshot {
   servers: PetServerSnapshot[]
   openTabs: PetOpenTab[]
   counts: PetCounts
+  petSize: PetSize
   updatedAt: number
 }
 
@@ -102,6 +111,13 @@ export function addCounts(left: PetCounts, right: PetCounts): PetCounts {
   }
 }
 
+export interface PetCardBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface DshPetApi {
   getSnapshot(): Promise<PetSnapshot>
   onSnapshot(callback: (snapshot: PetSnapshot) => void): () => void
@@ -110,6 +126,7 @@ export interface DshPetApi {
   openManager(): Promise<void>
   setIgnoreMouseEvents(ignore: boolean): Promise<void>
   setExpanded(expanded: boolean): Promise<void>
+  setCardBounds(bounds: PetCardBounds | null): void
   beginDrag(): void
   dragTo(screenX: number, screenY: number): void
   endDrag(): void

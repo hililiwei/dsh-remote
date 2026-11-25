@@ -72,6 +72,7 @@ const CHANNELS = [
   'pet:open-manager',
   'pet:ignore-mouse',
   'pet:set-expanded',
+  'pet:card-bounds',
   'pet:drag-start',
   'pet:drag-move',
   'pet:drag-end'
@@ -429,6 +430,30 @@ export function registerIpc(deps: IpcDeps): void {
     const sender = BrowserWindow.fromWebContents(event.sender)
     return Boolean(sender && pet.isPetWindow(sender))
   }
+  ipcMain.removeAllListeners('pet:card-bounds')
+  ipcMain.on('pet:card-bounds', (event, rawBounds) => {
+    if (!isPetSender(event)) return
+    if (rawBounds === null) {
+      pet.setCardBounds(null)
+      return
+    }
+    if (typeof rawBounds !== 'object' || rawBounds === null) return
+    const value = rawBounds as Record<string, unknown>
+    if (
+      typeof value.x !== 'number' ||
+      typeof value.y !== 'number' ||
+      typeof value.width !== 'number' ||
+      typeof value.height !== 'number'
+    ) {
+      return
+    }
+    pet.setCardBounds({
+      x: value.x,
+      y: value.y,
+      width: value.width,
+      height: value.height
+    })
+  })
   ipcMain.removeAllListeners('pet:drag-start')
   ipcMain.on('pet:drag-start', (event) => {
     if (isPetSender(event)) pet.beginDrag()

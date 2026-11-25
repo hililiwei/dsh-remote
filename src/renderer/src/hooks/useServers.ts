@@ -39,7 +39,13 @@ function normalizeSettings(value: AppSettings | null | undefined): AppSettings {
           alwaysOnTop:
             typeof value.pet.alwaysOnTop === 'boolean'
               ? value.pet.alwaysOnTop
-              : fallback.pet.alwaysOnTop
+              : fallback.pet.alwaysOnTop,
+          size:
+            value.pet.size === 'small' ||
+            value.pet.size === 'medium' ||
+            value.pet.size === 'large'
+              ? value.pet.size
+              : fallback.pet.size
         }
       : fallback.pet,
     windowBounds: isRecord(value.windowBounds)

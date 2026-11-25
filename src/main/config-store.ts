@@ -31,7 +31,7 @@ function defaults(): AppSettings {
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
-    pet: { enabled: true, alwaysOnTop: true },
+    pet: { enabled: true, alwaysOnTop: true, size: 'medium' },
     windowBounds: {}
   }
 }
@@ -138,6 +138,9 @@ function sanitize(raw: unknown): AppSettings {
     if (typeof raw.pet.enabled === 'boolean') settings.pet.enabled = raw.pet.enabled
     if (typeof raw.pet.alwaysOnTop === 'boolean') {
       settings.pet.alwaysOnTop = raw.pet.alwaysOnTop
+    }
+    if (raw.pet.size === 'small' || raw.pet.size === 'medium' || raw.pet.size === 'large') {
+      settings.pet.size = raw.pet.size
     }
   }
   if (
@@ -310,6 +313,13 @@ export class ConfigStore {
       if (typeof patch.pet.enabled === 'boolean') this.settings.pet.enabled = patch.pet.enabled
       if (typeof patch.pet.alwaysOnTop === 'boolean') {
         this.settings.pet.alwaysOnTop = patch.pet.alwaysOnTop
+      }
+      if (
+        patch.pet.size === 'small' ||
+        patch.pet.size === 'medium' ||
+        patch.pet.size === 'large'
+      ) {
+        this.settings.pet.size = patch.pet.size
       }
     }
     if (patch.shellWidth === null) {
