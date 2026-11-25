@@ -193,7 +193,9 @@ function scheduleIdleAction(): void {
   if (state === 'needs-you') return
   idleTimer = window.setTimeout(() => {
     idleTimer = undefined
-    if (state !== 'idle') return
+    // Needs-you has its own attention animation; running/done share the
+    // idle rotation, including incidental life actions.
+    if (state === 'needs-you') return
     const action = randomCategoryAction()
     if (!action) {
       scheduleIdleAction()
@@ -558,11 +560,6 @@ function render(): void {
     currentState = nextState
     enterState(nextState)
   }
-  if (snapshot.openTabs.length === 0) {
-    currentState = 'idle'
-    enterState('idle')
-  }
-
   if (snapshot.counts.needsYou > 0) {
     badge.hidden = false
     badge.dataset.kind = 'needs'
@@ -723,4 +720,5 @@ if (document.readyState === 'loading') {
 } else {
   build()
 }
+
 
