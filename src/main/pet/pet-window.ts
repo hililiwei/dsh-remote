@@ -237,7 +237,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   const startClickThroughGuard = (): void => {
     if (clickThroughTimer !== undefined) return
     updateClickThrough()
-    clickThroughTimer = setInterval(updateClickThrough, 16)
+    clickThroughTimer = setInterval(updateClickThrough, 33)
   }
   const stopClickThroughGuard = (): void => {
     if (clickThroughTimer !== undefined) clearInterval(clickThroughTimer)

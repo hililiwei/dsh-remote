@@ -587,8 +587,8 @@ body {
 .pet-badge {
   position: absolute;
   z-index: 2;
-  top: 24px;
-  right: 36px;
+  top: 27%;
+  right: 42%;
   width: 9px;
   min-width: 9px;
   height: 9px;

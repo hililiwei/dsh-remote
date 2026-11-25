@@ -8,6 +8,7 @@ import {
 } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { APP_NAME } from '../shared/constants'
+import { isPetSize } from '../shared/pet'
 import type {
   AppInfo,
   AppSettings,
@@ -240,7 +241,7 @@ export function registerIpc(deps: IpcDeps): void {
       ? rawPatch
       : {}) as AppSettings & {
       shellWidth?: number | null
-      pet?: { enabled?: unknown; alwaysOnTop?: unknown }
+      pet?: { enabled?: unknown; alwaysOnTop?: unknown; size?: unknown }
     }
     const hasWidth = Object.prototype.hasOwnProperty.call(patch, 'shellWidth')
     const petPatch =
@@ -249,7 +250,8 @@ export function registerIpc(deps: IpcDeps): void {
             ...(typeof patch.pet.enabled === 'boolean' ? { enabled: patch.pet.enabled } : {}),
             ...(typeof patch.pet.alwaysOnTop === 'boolean'
               ? { alwaysOnTop: patch.pet.alwaysOnTop }
-              : {})
+              : {}),
+            ...(isPetSize(patch.pet.size) ? { size: patch.pet.size } : {})
           }
         : undefined
     const settings = await store.updateSettings({

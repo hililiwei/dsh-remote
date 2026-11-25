@@ -286,7 +286,7 @@ function scheduleAutoClose(): void {
   if (!open) return
   autoCloseTimer = window.setTimeout(() => {
     autoCloseTimer = undefined
-    if (open) setOpen(false)
+    if (open) void setOpen(false)
   }, AUTO_CLOSE_MS)
 }
 
@@ -308,24 +308,35 @@ function reportCardBounds(): void {
   })
 }
 
-function setOpen(next: boolean): void {
+let openTransition = 0
+
+async function setOpen(next: boolean): Promise<void> {
+  const transition = ++openTransition
   open = next
-  card.hidden = !open
-  void window.dshPet.setExpanded(open)
-  if (open) {
-    cardBody.scrollTop = 0
-    cardSignature = ''
-    renderCard(true)
-    scheduleAutoClose()
-    window.scrollTo(0, 0)
-    window.requestAnimationFrame(() => {
-      window.scrollTo(0, 0)
-      reportCardBounds()
-    })
-  } else {
+  if (!next) {
+    card.hidden = true
     clearAutoClose()
     window.dshPet.setCardBounds(null)
+    await window.dshPet.setExpanded(false).catch(() => undefined)
+    return
   }
+
+  // Resize the transparent window first, then reveal the card. Showing the
+  // card before the resize causes a one-frame clipped flash.
+  card.hidden = true
+  await window.dshPet.setExpanded(true).catch(() => undefined)
+  if (transition !== openTransition || !open) return
+
+  card.hidden = false
+  cardBody.scrollTop = 0
+  cardSignature = ''
+  renderCard(true)
+  scheduleAutoClose()
+  window.scrollTo(0, 0)
+  window.requestAnimationFrame(() => {
+    window.scrollTo(0, 0)
+    reportCardBounds()
+  })
 }
 
 function setBubble(text: string): void {
@@ -576,7 +587,7 @@ function build(): void {
   hide.type = 'button'
   hide.title = '收起列表'
   hide.addEventListener('click', () => {
-    setOpen(false)
+    void setOpen(false)
   })
   actions.append(manager, hide)
   head.append(actions)
@@ -632,7 +643,7 @@ function build(): void {
     button.releasePointerCapture?.(event.pointerId)
     finishPointer()
     if (clicked) {
-      setOpen(!open)
+      void setOpen(!open)
       playClick()
     }
   })
@@ -642,14 +653,14 @@ function build(): void {
   button.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
-    setOpen(!open)
+    void setOpen(!open)
     playClick()
   })
 
   root.append(bubble, card, button)
 
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && open) setOpen(false)
+    if (event.key === 'Escape' && open) void setOpen(false)
   })
 
   void window.dshPet.setIgnoreMouseEvents(false)
