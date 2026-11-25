@@ -241,7 +241,7 @@ export function registerIpc(deps: IpcDeps): void {
       ? rawPatch
       : {}) as AppSettings & {
       shellWidth?: number | null
-      pet?: { enabled?: unknown; alwaysOnTop?: unknown; size?: unknown }
+      pet?: { enabled?: unknown; alwaysOnTop?: unknown; size?: unknown; skin?: unknown }
     }
     const hasWidth = Object.prototype.hasOwnProperty.call(patch, 'shellWidth')
     const petPatch =
@@ -251,7 +251,10 @@ export function registerIpc(deps: IpcDeps): void {
             ...(typeof patch.pet.alwaysOnTop === 'boolean'
               ? { alwaysOnTop: patch.pet.alwaysOnTop }
               : {}),
-            ...(isPetSize(patch.pet.size) ? { size: patch.pet.size } : {})
+            ...(isPetSize(patch.pet.size) ? { size: patch.pet.size } : {}),
+            ...(patch.pet.skin === 'cartoon' || patch.pet.skin === 'elegant'
+              ? { skin: patch.pet.skin }
+              : {})
           }
         : undefined
     const settings = await store.updateSettings({

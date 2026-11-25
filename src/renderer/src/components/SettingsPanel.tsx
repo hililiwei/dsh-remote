@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppInfo, AppSettings, AppSettingsPatch, ThemeMode } from '@shared/types'
-import type { PetSize } from '@shared/pet'
+import type { PetSize, PetSkin } from '@shared/pet'
 
 export type SettingsPatch = AppSettingsPatch
 
@@ -11,6 +11,11 @@ interface SettingsPanelProps {
   saving: boolean
   onChange: (patch: SettingsPatch) => void
 }
+
+const PET_SKIN_OPTIONS: { value: PetSkin; label: string; testId: string }[] = [
+  { value: 'cartoon', label: '卡通', testId: 'settings-pet-skin-cartoon' },
+  { value: 'elegant', label: '御姐 · 深蓝', testId: 'settings-pet-skin-elegant' }
+]
 
 const PET_SIZE_OPTIONS: { value: PetSize; label: string; testId: string }[] = [
   { value: 'small', label: '小', testId: 'settings-pet-size-small' },
@@ -144,6 +149,34 @@ export default function SettingsPanel({
             />
             <span className="switch__track" aria-hidden="true" />
           </label>
+        </div>
+
+        <div className="setting-row setting-row--stack">
+          <div className="setting-row__text">
+            <span className="setting-row__title">宠物形象</span>
+            <span className="setting-row__desc">
+              卡通是原来的 Q 版形象；御姐·深蓝使用另一套动作和立绘，切换后立即生效。
+            </span>
+          </div>
+          <div
+            className="segmented"
+            role="group"
+            aria-label="宠物形象"
+            data-testid="settings-pet-skin"
+          >
+            {PET_SKIN_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={settings.pet.skin === option.value}
+                onClick={() => onChange({ pet: { skin: option.value } })}
+                disabled={saving || !settings.pet.enabled}
+                data-testid={option.testId}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="setting-row setting-row--stack">
@@ -297,4 +330,5 @@ export default function SettingsPanel({
     </section>
   )
 }
+
 

@@ -10,6 +10,7 @@ import {
   type PetSession,
   type PetSessionState,
   type PetSize,
+  type PetSkin,
   type PetSnapshot,
   type PetWorkspace
 } from './types'
@@ -205,14 +206,22 @@ export function aggregateServerSnapshot(input: AggregateServerInput): PetServerS
 export function mergePetSnapshots(
   servers: readonly PetServerSnapshot[],
   openTabs: readonly PetOpenTab[] = [],
-  petSize: PetSize = 'medium'
+  petSize: PetSize = 'medium',
+  petSkin: PetSkin = 'cartoon'
 ): PetSnapshot {
   const ordered = [...servers].sort((left, right) =>
     left.serverName.localeCompare(right.serverName, 'zh-CN')
   )
   let counts: PetCounts = { ...EMPTY_COUNTS }
   for (const server of ordered) counts = addCounts(counts, server.counts)
-  return { servers: ordered, openTabs: [...openTabs], counts, petSize, updatedAt: Date.now() }
+  return {
+    servers: ordered,
+    openTabs: [...openTabs],
+    counts,
+    petSize,
+    petSkin,
+    updatedAt: Date.now()
+  }
 }
 
 export function emptyPetSnapshot(): PetSnapshot {
@@ -221,6 +230,7 @@ export function emptyPetSnapshot(): PetSnapshot {
     openTabs: [],
     counts: { ...EMPTY_COUNTS },
     petSize: 'medium',
+    petSkin: 'cartoon',
     updatedAt: Date.now()
   }
 }

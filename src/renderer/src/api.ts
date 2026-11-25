@@ -34,7 +34,7 @@ export function emptySettings(): AppSettings {
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
-    pet: { enabled: true, alwaysOnTop: true, size: 'medium' },
+    pet: { enabled: true, alwaysOnTop: true, size: 'medium', skin: 'cartoon' },
     windowBounds: {}
   }
 }

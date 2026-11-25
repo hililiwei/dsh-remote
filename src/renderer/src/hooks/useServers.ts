@@ -45,7 +45,11 @@ function normalizeSettings(value: AppSettings | null | undefined): AppSettings {
             value.pet.size === 'medium' ||
             value.pet.size === 'large'
               ? value.pet.size
-              : fallback.pet.size
+              : fallback.pet.size,
+          skin:
+            value.pet.skin === 'cartoon' || value.pet.skin === 'elegant'
+              ? value.pet.skin
+              : fallback.pet.skin
         }
       : fallback.pet,
     windowBounds: isRecord(value.windowBounds)
@@ -167,3 +171,4 @@ export function useServers(): ServersController {
     markStatus
   }
 }
+

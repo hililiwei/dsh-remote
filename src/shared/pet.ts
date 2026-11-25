@@ -6,6 +6,14 @@ export function isPetSize(value: unknown): value is PetSize {
   return value === 'small' || value === 'medium' || value === 'large'
 }
 
+export type PetSkin = 'cartoon' | 'elegant'
+
+export const PET_SKIN_VALUES = ['cartoon', 'elegant'] as const
+
+export function isPetSkin(value: unknown): value is PetSkin {
+  return value === 'cartoon' || value === 'elegant'
+}
+
 export type PetSessionState = 'needs-you' | 'running' | 'done' | 'idle'
 
 export type PetServerStatus =
@@ -62,6 +70,7 @@ export interface PetSnapshot {
   openTabs: PetOpenTab[]
   counts: PetCounts
   petSize: PetSize
+  petSkin: PetSkin
   updatedAt: number
 }
 
