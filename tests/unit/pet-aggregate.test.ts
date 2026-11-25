@@ -60,8 +60,8 @@ describe('pet aggregate', () => {
 
     expect(snapshot.sessions.map((session) => session.state)).toEqual([
       'needs-you',
-      'running',
       'done',
+      'running',
       'idle'
     ])
     expect(snapshot.counts).toEqual({
@@ -120,11 +120,36 @@ describe('pet aggregate', () => {
     )
   })
 
-  it('marks a running-to-idle transition as done and clears it when the server is viewed', () => {
+  it('marks a running-to-idle transition as done and keeps the mark', () => {
     const sessions = [summary({ sessionId: 'a', running: false })]
     const previous = new Map([['a', true]])
-    expect(advanceCompletionState({ previousRunning: previous, sessions, doneIds: new Set(), serverViewed: false })).toEqual(new Set(['a']))
-    expect(advanceCompletionState({ previousRunning: previous, sessions, doneIds: new Set(['a']), serverViewed: true })).toEqual(new Set())
+    expect(advanceCompletionState({ previousRunning: previous, sessions, doneIds: new Set() })).toEqual(new Set(['a']))
+    expect(advanceCompletionState({ previousRunning: previous, sessions, doneIds: new Set(['a']) })).toEqual(new Set(['a']))
+  })
+
+  it('reports one completed and one still running after a two-task transition', () => {
+    const sessions = [
+      summary({ sessionId: 'finished', running: false, updatedAt: 2 }),
+      summary({ sessionId: 'working', running: true, updatedAt: 1 })
+    ]
+    const done = advanceCompletionState({
+      previousRunning: new Map([
+        ['finished', true],
+        ['working', true]
+      ]),
+      sessions,
+      doneIds: new Set()
+    })
+    const snapshot = aggregateServerSnapshot({
+      server: { id: 's', name: 'S', baseUrl: 'http://localhost/' },
+      status: 'online',
+      sessions,
+      workspaces: [],
+      archivedSessionIds: [],
+      doneIds: done
+    })
+    expect(snapshot.counts).toMatchObject({ running: 1, done: 1, total: 2 })
+    expect(snapshot.sessions.map((session) => session.state)).toEqual(['done', 'running'])
   })
 
   it('merges server snapshots into one sorted summary', () => {

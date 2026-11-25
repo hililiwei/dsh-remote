@@ -264,8 +264,7 @@ handleTabsChanged(): void {
     const done = advanceCompletionState({
       previousRunning: previous,
       sessions: state.sessions,
-      doneIds: this.done.get(server.id) ?? new Set(),
-      serverViewed: this.isServerViewed(server.id)
+      doneIds: this.done.get(server.id) ?? new Set()
     })
     this.done.set(server.id, done)
     const nextRunning = new Map<string, boolean>()
@@ -273,13 +272,6 @@ handleTabsChanged(): void {
       if (session.running === true) nextRunning.set(session.sessionId, true)
     }
     this.previousRunning.set(server.id, nextRunning)
-  }
-
-  private isServerViewed(serverId: string): boolean {
-    if (this.deps.tabs.activeServerId() !== serverId) return false
-    const shell = this.deps.tabs.getShellWindow()
-    if (!shell || shell.isDestroyed() || !shell.isVisible() || shell.isMinimized()) return false
-    return BrowserWindow.getFocusedWindow() === shell
   }
 
   private publish(): void {
@@ -320,4 +312,5 @@ handleTabsChanged(): void {
     this.clients.clear()
   }
 }
+
 

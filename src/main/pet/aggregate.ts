@@ -17,8 +17,8 @@ import {
 
 const STATE_RANK: Record<PetSessionState, number> = {
   'needs-you': 0,
-  running: 1,
-  done: 2,
+  done: 1,
+  running: 2,
   idle: 3
 }
 
@@ -38,7 +38,6 @@ export interface CompletionInput {
   previousRunning: ReadonlyMap<string, boolean>
   sessions: readonly DshSessionSummary[]
   doneIds: ReadonlySet<string>
-  serverViewed: boolean
 }
 
 function record(value: unknown): Record<string, unknown> | undefined {
@@ -125,7 +124,6 @@ export function countSessions(sessions: readonly PetSession[]): PetCounts {
  * the user is elsewhere. Opening the server clears every mark for that server.
  */
 export function advanceCompletionState(input: CompletionInput): Set<string> {
-  if (input.serverViewed) return new Set()
   const next = new Set<string>()
   const present = new Set<string>()
   for (const session of input.sessions) {
@@ -234,3 +232,4 @@ export function emptyPetSnapshot(): PetSnapshot {
     updatedAt: Date.now()
   }
 }
+

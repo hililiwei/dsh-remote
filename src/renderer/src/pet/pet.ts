@@ -103,8 +103,8 @@ function h<K extends keyof HTMLElementTagNameMap>(
 
 function stateOf(counts: PetCounts): PetSessionState {
   if (counts.needsYou > 0) return 'needs-you'
-  if (counts.running > 0) return 'running'
   if (counts.done > 0) return 'done'
+  if (counts.running > 0) return 'running'
   return 'idle'
 }
 
@@ -565,13 +565,13 @@ function render(): void {
     badge.hidden = false
     badge.dataset.kind = 'needs'
     badge.textContent = ''
-  } else if (snapshot.counts.running > 0) {
-    badge.hidden = false
-    badge.dataset.kind = 'running'
-    badge.textContent = ''
   } else if (snapshot.counts.done > 0) {
     badge.hidden = false
     badge.dataset.kind = 'done'
+    badge.textContent = ''
+  } else if (snapshot.counts.running > 0) {
+    badge.hidden = false
+    badge.dataset.kind = 'running'
     badge.textContent = ''
   } else {
     badge.hidden = true
@@ -721,3 +721,4 @@ if (document.readyState === 'loading') {
 } else {
   build()
 }
+
