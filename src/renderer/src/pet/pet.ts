@@ -188,7 +188,9 @@ function clearIdleTimer(): void {
 function scheduleIdleAction(): void {
   clearIdleTimer()
   // Running has no dedicated animation set; it shares the idle rotation.
-  if (state !== 'idle' && state !== 'running') return
+  // A completed task also returns to the idle rotation after its one-shot
+  // celebration, so keep scheduling incidental actions for it as well.
+  if (state === 'needs-you') return
   idleTimer = window.setTimeout(() => {
     idleTimer = undefined
     if (state !== 'idle') return
