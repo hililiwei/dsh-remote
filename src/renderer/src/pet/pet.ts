@@ -663,7 +663,15 @@ function build(): void {
     if (event.key === 'Escape' && open) void setOpen(false)
   })
 
-  void window.dshPet.setIgnoreMouseEvents(false)
+  const setMousePassthrough = (ignore: boolean): void => {
+    void window.dshPet.setIgnoreMouseEvents(ignore)
+  }
+  window.addEventListener('mousemove', (event) => {
+    const target = event.target instanceof Element ? event.target : null
+    setMousePassthrough(!target?.closest('.pet-button, .pet-card'))
+  })
+  window.addEventListener('mouseleave', () => setMousePassthrough(true))
+  setMousePassthrough(true)
 
   void window.dshPet.getSnapshot().then((initial) => {
     if (initial) {

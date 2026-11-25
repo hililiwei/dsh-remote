@@ -123,9 +123,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   let dragStart: { cursor: { x: number; y: number }; bounds: Rectangle } | null = null
   let expanded = false
   let cardBounds: Rectangle | null = null
-  let clickThroughTimer: NodeJS.Timeout | undefined
-  let ignoringMouse = false
-
+  
   const bounds = restoredPetBounds(store, petSize)
   const initialDims = PET_DIMENSIONS[petSize]
   // A hidden owned window keeps the pet out of the Windows taskbar even when
@@ -181,7 +179,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     current.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   }
   current.setFocusable(true)
-  current.setIgnoreMouseEvents(false)
+  current.setIgnoreMouseEvents(true, { forward: true })
 
   let topGuard: NodeJS.Timeout | undefined
   const startTopGuard = (): void => {
@@ -201,48 +199,6 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     topGuard = undefined
   }
   if (alwaysOnTop) startTopGuard()
-  const inside = (point: { x: number; y: number }, rect: Rectangle): boolean =>
-    point.x >= rect.x &&
-    point.x <= rect.x + rect.width &&
-    point.y >= rect.y &&
-    point.y <= rect.y + rect.height
-
-  const updateClickThrough = (): void => {
-    if (!win || win.isDestroyed() || !win.isVisible()) return
-    const point = screen.getCursorScreenPoint()
-    const area = win.getContentBounds()
-    const dims = PET_DIMENSIONS[petSize]
-    const petRect: Rectangle = {
-      x: area.x + area.width - PET_MARGIN - dims.buttonWidth,
-      y: area.y + area.height - PET_MARGIN - dims.buttonHeight,
-      width: dims.buttonWidth,
-      height: dims.buttonHeight
-    }
-    const cardRect: Rectangle | null =
-      expanded && cardBounds
-        ? {
-            x: area.x + cardBounds.x,
-            y: area.y + cardBounds.y,
-            width: cardBounds.width,
-            height: cardBounds.height
-          }
-        : null
-    const interactive = inside(point, petRect) || Boolean(cardRect && inside(point, cardRect))
-    const nextIgnoring = !interactive
-    if (nextIgnoring === ignoringMouse) return
-    ignoringMouse = nextIgnoring
-    win.setIgnoreMouseEvents(nextIgnoring)
-  }
-
-  const startClickThroughGuard = (): void => {
-    if (clickThroughTimer !== undefined) return
-    updateClickThrough()
-    clickThroughTimer = setInterval(updateClickThrough, 33)
-  }
-  const stopClickThroughGuard = (): void => {
-    if (clickThroughTimer !== undefined) clearInterval(clickThroughTimer)
-    clickThroughTimer = undefined
-  }
 
   current.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   current.webContents.on('will-navigate', (event) => {
@@ -259,7 +215,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   })
   current.webContents.on('did-finish-load', () => {
     current.setSkipTaskbar(true)
-    current.setIgnoreMouseEvents(false)
+    current.setIgnoreMouseEvents(true, { forward: true })
     if (latestSnapshot && !current.isDestroyed()) {
       current.webContents.send('pet:snapshot', latestSnapshot)
     }
@@ -274,19 +230,19 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
 
   current.once('ready-to-show', () => {
     current.setSkipTaskbar(true)
-    current.setIgnoreMouseEvents(false)
+    current.setIgnoreMouseEvents(true, { forward: true })
     if (wantedVisible && !current.isDestroyed()) {
       current.showInactive()
       current.setSkipTaskbar(true)
     }
-    startClickThroughGuard()
+
   })
   current.on('show', () => {
     current.setSkipTaskbar(true)
-    current.setIgnoreMouseEvents(false)
-    startClickThroughGuard()
+    current.setIgnoreMouseEvents(true, { forward: true })
+
   })
-  current.on('hide', stopClickThroughGuard)
+  
   
 
   const scheduleBoundsSave = (): void => {
@@ -307,7 +263,6 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   })
   current.on('closed', () => {
     stopTopGuard()
-    stopClickThroughGuard()
     if (owner && !owner.isDestroyed()) owner.destroy()
     if (win === current) win = null
   })
@@ -322,14 +277,13 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       if (!win || win.isDestroyed()) return
       if (win.isMinimized()) win.restore()
       win.setSkipTaskbar(true)
-      win.setIgnoreMouseEvents(false)
+      win.setIgnoreMouseEvents(true, { forward: true })
       win.showInactive()
       win.setSkipTaskbar(true)
     },
     hide(): void {
       wantedVisible = false
-      stopClickThroughGuard()
-      if (!win || win.isDestroyed()) return
+        if (!win || win.isDestroyed()) return
       win.hide()
     },
     toggle(): void {
@@ -403,7 +357,6 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
         Math.max(workArea.x, workArea.x + workArea.width - dims.width)
       )
       win.setBounds({ x, y, width: dims.width, height }, false)
-      updateClickThrough()
     },
     setPetSize(size: PetSize): void {
       if (size === petSize) return
@@ -425,7 +378,6 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
         Math.max(workArea.x, workArea.x + workArea.width - dims.width)
       )
       win.setBounds({ x, y, width: dims.width, height }, false)
-      updateClickThrough()
     },
     setCardBounds(bounds: PetCardBounds | null): void {
       if (
@@ -444,7 +396,6 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
           height: Math.max(0, bounds.height)
         }
       }
-      updateClickThrough()
     },
     isPetWindow(candidate: BrowserWindow): boolean {
       return Boolean(win && !win.isDestroyed() && candidate === win)
@@ -453,8 +404,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       forceClose = true
       wantedVisible = false
       stopTopGuard()
-      stopClickThroughGuard()
-      if (saveTimer) clearTimeout(saveTimer)
+        if (saveTimer) clearTimeout(saveTimer)
       if (win && !win.isDestroyed()) win.destroy()
       win = null
       if (owner && !owner.isDestroyed()) owner.destroy()

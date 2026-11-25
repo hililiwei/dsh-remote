@@ -162,6 +162,19 @@ export class HeadlessDshClient {
   }
 
   async start(): Promise<void> {
+    if (this.server.allowInvalidCertificate) {
+      let host = ''
+      try {
+        host = new URL(this.server.baseUrl).hostname
+      } catch {
+        // The URL was validated before the server was saved.
+      }
+      // `session.fetch` does not emit the page-level certificate-error event.
+      // Trust only the configured host, and only when the user opted in.
+      this.browserSession.setCertificateVerifyProc((request, callback) => {
+        callback(host !== '' && request.hostname === host ? 0 : -3)
+      })
+    }
     const cookies = await this.browserSession.cookies.get({ url: this.server.baseUrl })
     if (cookies.length === 0) {
       this.setStatus('auth-required', '没有这个服务器的登录 cookie，请先在标签页里连接一次。')
@@ -213,6 +226,7 @@ export class HeadlessDshClient {
     this.stopped = true
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
+    this.browserSession.setCertificateVerifyProc(null)
     this.abort.abort()
     for (const socket of this.sockets) socket.close()
     this.sockets.clear()
