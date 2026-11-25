@@ -32,6 +32,16 @@ function normalizeSettings(value: AppSettings | null | undefined): AppSettings {
       value.theme === 'dark' || value.theme === 'light' || value.theme === 'system'
         ? value.theme
         : 'system',
+    pet: isRecord(value.pet)
+      ? {
+          enabled:
+            typeof value.pet.enabled === 'boolean' ? value.pet.enabled : fallback.pet.enabled,
+          alwaysOnTop:
+            typeof value.pet.alwaysOnTop === 'boolean'
+              ? value.pet.alwaysOnTop
+              : fallback.pet.alwaysOnTop
+        }
+      : fallback.pet,
     windowBounds: isRecord(value.windowBounds)
       ? (value.windowBounds as AppSettings['windowBounds'])
       : {}

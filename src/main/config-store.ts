@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import { CONFIG_VERSION } from '../shared/constants'
 import type {
   AppSettings,
+  AppSettingsPatch,
   ProxyMode,
   ServerInput,
   ServerProfile,
@@ -30,6 +31,7 @@ function defaults(): AppSettings {
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
+    pet: { enabled: true, alwaysOnTop: true },
     windowBounds: {}
   }
 }
@@ -132,6 +134,12 @@ function sanitize(raw: unknown): AppSettings {
   if (typeof raw.autoConnect === 'boolean') settings.autoConnect = raw.autoConnect
   if (typeof raw.closeToTray === 'boolean') settings.closeToTray = raw.closeToTray
   if (THEMES.includes(raw.theme as ThemeMode)) settings.theme = raw.theme as ThemeMode
+  if (isRecord(raw.pet)) {
+    if (typeof raw.pet.enabled === 'boolean') settings.pet.enabled = raw.pet.enabled
+    if (typeof raw.pet.alwaysOnTop === 'boolean') {
+      settings.pet.alwaysOnTop = raw.pet.alwaysOnTop
+    }
+  }
   if (
     typeof raw.shellWidth === 'number' &&
     Number.isFinite(raw.shellWidth) &&
@@ -293,15 +301,17 @@ export class ConfigStore {
     await this.persist()
   }
 
-  async updateSettings(
-    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>> & {
-      shellWidth?: number | null
-    }
-  ): Promise<AppSettings> {
+  async updateSettings(patch: AppSettingsPatch): Promise<AppSettings> {
     await this.ensureLoaded()
     if (typeof patch.autoConnect === 'boolean') this.settings.autoConnect = patch.autoConnect
     if (typeof patch.closeToTray === 'boolean') this.settings.closeToTray = patch.closeToTray
     if (THEMES.includes(patch.theme as ThemeMode)) this.settings.theme = patch.theme as ThemeMode
+    if (patch.pet && typeof patch.pet === 'object') {
+      if (typeof patch.pet.enabled === 'boolean') this.settings.pet.enabled = patch.pet.enabled
+      if (typeof patch.pet.alwaysOnTop === 'boolean') {
+        this.settings.pet.alwaysOnTop = patch.pet.alwaysOnTop
+      }
+    }
     if (patch.shellWidth === null) {
       delete this.settings.shellWidth
     } else if (

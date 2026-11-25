@@ -20,8 +20,16 @@ export function preloadFile(): string {
   return join(__dirname, '../preload/index.js')
 }
 
+export function petPreloadFile(): string {
+  return join(__dirname, '../preload/pet.js')
+}
+
 export function rendererIndexFile(): string {
   return join(__dirname, '../renderer/index.html')
+}
+
+export function petHtmlFile(): string {
+  return join(__dirname, '../renderer/pet.html')
 }
 
 export function appIconFile(): string {

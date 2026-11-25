@@ -4,7 +4,21 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: [
+          '@deepseek-ai/cordis',
+          '@deepseek-ai/dsh-client-connection',
+          '@deepseek-ai/dsh-typert-registry',
+          '@deepseek-ai/dsh-api-gateway',
+          '@deepseek-ai/dsh-api-session-controller',
+          '@deepseek-ai/dsh-api-workspace-controller',
+          '@deepseek-ai/dsh-typert-protocol',
+          '@deepseek-ai/dsh-deque',
+          'zod'
+        ]
+      })
+    ],
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'src/main/index.ts') }
@@ -15,7 +29,10 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: { index: resolve(__dirname, 'src/preload/index.ts') }
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          pet: resolve(__dirname, 'src/preload/pet.ts')
+        }
       }
     }
   },
@@ -27,7 +44,10 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        input: resolve(__dirname, 'src/renderer/index.html')
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          pet: resolve(__dirname, 'src/renderer/pet.html')
+        }
       }
     }
   }

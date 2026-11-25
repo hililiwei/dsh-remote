@@ -5,10 +5,12 @@ import { logInfo, logWarn } from './logger'
 import { showManager } from './manager-window'
 import { trayIconFile } from './paths'
 import type { TabManager } from './tab-manager'
+import type { PetManager } from './pet/pet-manager'
 
 export interface TrayDeps {
   store: ConfigStore
   tabs: TabManager
+  pet: PetManager
 }
 
 let tray: Tray | null = null
@@ -28,6 +30,14 @@ function buildMenu(deps: TrayDeps): Menu {
     {
       label: '服务器管理',
       click: () => showManager()
+    },
+    {
+      label: '显示桌面宠物',
+      type: 'checkbox',
+      checked: deps.store.getSettings().pet.enabled,
+      click: () => {
+        void deps.pet.toggle()
+      }
     },
     { type: 'separator' },
     ...(servers.length > 0

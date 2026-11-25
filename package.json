@@ -1,6 +1,6 @@
 {
   "name": "dsh-remote",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cross-platform desktop shell for remote DeepSeek Harness web backends",
   "main": "out/main/index.js",
   "author": "DSH Remote",
@@ -21,8 +21,19 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-api-gateway": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-api-workspace-controller": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-client-connection": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-deque": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-scope": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-typert-registry": "0.2.2-rc.5",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "ws": "8.21.3",
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",

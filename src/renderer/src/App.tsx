@@ -408,13 +408,19 @@ function ManagerApp() {
     if (savingSettings) return
 
     const previous = settings
-    const optimistic = { ...settings, ...patch }
-    if (patch.shellWidth === null) {
-      const { shellWidth: _ignored, ...withoutWidth } = optimistic
-      applySettings(withoutWidth)
-    } else {
-      applySettings(optimistic as AppSettings)
+    const optimistic: AppSettings = {
+      ...settings,
+      ...(typeof patch.autoConnect === 'boolean' ? { autoConnect: patch.autoConnect } : {}),
+      ...(typeof patch.closeToTray === 'boolean' ? { closeToTray: patch.closeToTray } : {}),
+      ...(patch.theme ? { theme: patch.theme } : {}),
+      pet: patch.pet ? { ...settings.pet, ...patch.pet } : settings.pet
     }
+    if (patch.shellWidth === null) {
+      delete optimistic.shellWidth
+    } else if (typeof patch.shellWidth === 'number') {
+      optimistic.shellWidth = patch.shellWidth
+    }
+    applySettings(optimistic)
     setSavingSettings(true)
 
     void (async () => {

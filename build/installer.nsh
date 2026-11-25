@@ -8,6 +8,14 @@
 ; Remove an older ZIP-installed copy before the setup runs. NSIS copies are
 ; handled by electron-builder's own uninstallOldVersion logic later.
 !macro customInit
+  ; Reuse the previous install directory as the default instead of making the
+  ; user browse to it on every upgrade. The ZIP installer writes this key; the
+  ; NSIS uninstaller keeps it up to date.
+  ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DSHRemote" "InstallLocation"
+  ${If} $0 != ""
+    StrCpy $INSTDIR $0
+  ${EndIf}
+
   InitPluginsDir
   File /oname=$PLUGINSDIR\uninstall-old.ps1 "${BUILD_RESOURCES_DIR}\uninstall-old.ps1"
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\uninstall-old.ps1"'

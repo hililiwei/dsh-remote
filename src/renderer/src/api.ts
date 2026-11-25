@@ -1,6 +1,7 @@
 import type {
   AppInfo,
   AppSettings,
+  AppSettingsPatch,
   SaveServerResult,
   ServerInput,
   ServerProfile,
@@ -33,6 +34,7 @@ export function emptySettings(): AppSettings {
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
+    pet: { enabled: true, alwaysOnTop: true },
     windowBounds: {}
   }
 }
@@ -116,11 +118,7 @@ export const api = {
     return requireMethod('clearServerSession')(id)
   },
 
-  updateSettings(
-    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>> & {
-      shellWidth?: number | null
-    }
-  ): Promise<AppSettings> {
+  updateSettings(patch: AppSettingsPatch): Promise<AppSettings> {
     return requireMethod('updateSettings')(patch)
   },
 

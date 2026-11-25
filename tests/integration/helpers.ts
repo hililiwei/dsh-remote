@@ -14,11 +14,18 @@ export async function launchApp(userData: string): Promise<ElectronApplication> 
 }
 
 export async function managerPage(application: ElectronApplication): Promise<Page> {
-  let page = application.windows().find((candidate) => candidate.url().includes('view=manager'))
-  if (page) return page
-  page = await application.firstWindow()
-  await expect(page.getByTestId('manager-root')).toBeVisible()
-  return page
+  let page: Page | undefined
+  await expect
+    .poll(
+      () => {
+        page = application.windows().find((candidate) => candidate.url().includes('view=manager'))
+        return Boolean(page)
+      },
+      { timeout: 20_000, intervals: [200, 400, 800] }
+    )
+    .toBe(true)
+  await page!.getByTestId('manager-root').waitFor()
+  return page!
 }
 
 export async function tabsPage(application: ElectronApplication): Promise<Page> {

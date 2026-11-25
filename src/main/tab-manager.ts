@@ -36,6 +36,7 @@ export interface TabManagerDeps {
   store: ConfigStore
   sessions: SessionManager
   onServersChanged: () => void
+  onTabsChanged?: () => void
 }
 
 interface TabEntry {
@@ -835,6 +836,7 @@ export class TabManager {
     if (!shellWindow || shellWindow.webContents.isDestroyed()) return
     shellWindow.webContents.send('tabs:changed', this.listTabs())
     shellWindow.setTitle(this.shellTitle())
+    this.deps.onTabsChanged?.()
   }
 
   private schedulePersist(): void {

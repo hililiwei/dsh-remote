@@ -30,6 +30,11 @@ export interface ServerInput {
   allowInvalidCertificate?: boolean
 }
 
+export interface PetSettings {
+  enabled: boolean
+  alwaysOnTop: boolean
+}
+
 export interface AppSettings {
   version: 1
   servers: ServerProfile[]
@@ -42,7 +47,16 @@ export interface AppSettings {
   autoConnect: boolean
   closeToTray: boolean
   theme: ThemeMode
+  pet: PetSettings
   windowBounds: Record<string, WindowBounds>
+}
+
+export interface AppSettingsPatch {
+  autoConnect?: boolean
+  closeToTray?: boolean
+  theme?: ThemeMode
+  shellWidth?: number | null
+  pet?: Partial<PetSettings>
 }
 
 export interface TabInfo {
@@ -71,7 +85,7 @@ export interface AppInfo {
   isDev: boolean
 }
 
-export type WindowView = 'manager' | 'auth' | 'tabs'
+export type WindowView = 'manager' | 'auth' | 'tabs' | 'pet'
 
 export interface WindowContext {
   view: WindowView
@@ -104,11 +118,7 @@ export interface DshRemoteApi {
   submitAuth(tokenUrl: string): Promise<AuthSubmitResult>
   cancelAuth(): Promise<void>
   clearServerSession(id: string): Promise<void>
-  updateSettings(
-    patch: Partial<Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>> & {
-      shellWidth?: number | null
-    }
-  ): Promise<AppSettings>
+  updateSettings(patch: AppSettingsPatch): Promise<AppSettings>
   openManager(): Promise<void>
   openExternal(url: string): Promise<void>
   listTabs(): Promise<TabInfo[]>

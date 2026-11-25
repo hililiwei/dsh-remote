@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import { rendererIndexFile } from './paths'
+import { petHtmlFile, rendererIndexFile } from './paths'
 
 export type RendererQuery = Record<string, string | undefined>
 
@@ -23,4 +23,13 @@ export function loadRenderer(win: BrowserWindow, query: RendererQuery): Promise<
   const search: Record<string, string> = {}
   for (const [key, value] of params.entries()) search[key] = value
   return win.loadFile(rendererIndexFile(), { query: search })
+}
+
+/** Load the local overlay page used by the always-on-top pet window. */
+export function loadPetRenderer(win: BrowserWindow): Promise<void> {
+  const devUrl = process.env.ELECTRON_RENDERER_URL
+  if (devUrl) {
+    return win.loadURL(new URL('pet.html', devUrl).toString())
+  }
+  return win.loadFile(petHtmlFile())
 }

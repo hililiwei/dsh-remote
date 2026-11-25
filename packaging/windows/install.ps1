@@ -4,13 +4,39 @@
 
 $ErrorActionPreference = 'Stop'
 $source = $PSScriptRoot
-$defaultDir = Join-Path $env:LOCALAPPDATA 'Programs\DSH Remote'
+
+function Get-PreviousInstallDir {
+  $roots = @(
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+  )
+  foreach ($root in $roots) {
+    if (-not (Test-Path $root)) { continue }
+    foreach ($key in Get-ChildItem $root -ErrorAction SilentlyContinue) {
+      $props = Get-ItemProperty $key.PSPath -ErrorAction SilentlyContinue
+      if ($props.DisplayName -notlike 'DSH Remote*') { continue }
+      $candidate = $props.InstallLocation
+      if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path $candidate)) {
+        return [IO.Path]::GetFullPath($candidate).TrimEnd('\')
+      }
+    }
+  }
+  return $null
+}
+
+$previousDir = Get-PreviousInstallDir
+$defaultDir = if ($previousDir) {
+  $previousDir
+} else {
+  Join-Path $env:LOCALAPPDATA 'Programs\DSH Remote'
+}
 
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
   try {
     Add-Type -AssemblyName Microsoft.VisualBasic
     $InstallDir = [Microsoft.VisualBasic.Interaction]::InputBox(
-      "请输入 DSH Remote 安装路径：`n`n默认：$defaultDir`n`n留空或取消将不安装。",
+      "请输入 DSH Remote 安装路径：`n`n默认（上次安装位置）：$defaultDir`n`n留空或取消将不安装。",
       'DSH Remote 安装',
       $defaultDir
     )
@@ -179,7 +205,8 @@ Start-Process -WindowStyle Hidden -FilePath "$env:SystemRoot\System32\cmd.exe" -
 
 New-Item -Path $uninstallKey -Force | Out-Null
 Set-ItemProperty -Path $uninstallKey -Name DisplayName -Value 'DSH Remote'
-Set-ItemProperty -Path $uninstallKey -Name DisplayVersion -Value '0.1.0'
+$appVersion = if ($appExe -and (Test-Path $appExe)) { (Get-Item $appExe).VersionInfo.ProductVersion } else { '0.1.1' }
+Set-ItemProperty -Path $uninstallKey -Name DisplayVersion -Value $appVersion
 Set-ItemProperty -Path $uninstallKey -Name Publisher -Value 'DSH Remote'
 Set-ItemProperty -Path $uninstallKey -Name InstallLocation -Value $target
 Set-ItemProperty -Path $uninstallKey -Name DisplayIcon -Value $appExe

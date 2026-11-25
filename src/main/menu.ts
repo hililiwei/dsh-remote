@@ -12,10 +12,12 @@ import { logError } from './logger'
 import { showManager } from './manager-window'
 import { partitionFor } from './session-manager'
 import type { TabManager } from './tab-manager'
+import type { PetManager } from './pet/pet-manager'
 
 export interface MenuDeps {
   store: ConfigStore
   tabs: TabManager
+  pet: PetManager
 }
 
 function helpDialog(): void {
@@ -161,6 +163,15 @@ export function installMenu(deps: MenuDeps): void {
           label: '重新加载当前标签页',
           accelerator: 'CmdOrCtrl+R',
           click: () => deps.tabs.reloadActive()
+        },
+        { type: 'separator' },
+        {
+          label: '桌面宠物',
+          type: 'checkbox' as const,
+          checked: deps.store.getSettings().pet.enabled,
+          click: () => {
+            void deps.pet.toggle()
+          }
         },
         { type: 'separator' },
         { role: 'resetZoom' },

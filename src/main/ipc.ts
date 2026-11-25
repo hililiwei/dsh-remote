@@ -1,4 +1,11 @@
-import { app, BrowserWindow, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  shell,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent
+} from 'electron'
 import { pathToFileURL } from 'node:url'
 import { APP_NAME } from '../shared/constants'
 import type {
@@ -14,12 +21,13 @@ import type {
   ThemeMode,
   WindowContext
 } from '../shared/types'
+import type { PetManager } from './pet/pet-manager'
 import { closeAuthWindow } from './auth-window'
 import { AuthInputError, AuthRequiredError, NavigationError } from './connection'
 import { ConfigStore, ConfigStoreError } from './config-store'
 import { logError, logInfo } from './logger'
 import { showManager } from './manager-window'
-import { rendererIndexFile } from './paths'
+import { petHtmlFile, rendererIndexFile } from './paths'
 import { checkServer } from './server-status'
 import { SessionManager } from './session-manager'
 import { TabManager } from './tab-manager'
@@ -30,6 +38,7 @@ export interface IpcDeps {
   store: ConfigStore
   sessions: SessionManager
   tabs: TabManager
+  pet: PetManager
   applyTheme: (theme: ThemeMode) => void
   refreshMenu: () => void
   refreshTray: () => void
@@ -56,7 +65,16 @@ const CHANNELS = [
   'tabs:close',
   'tabs:add',
   'tabs:reload',
-  'tabs:menu'
+  'tabs:menu',
+  'pet:snapshot',
+  'pet:focus-server',
+  'pet:hide',
+  'pet:open-manager',
+  'pet:ignore-mouse',
+  'pet:set-expanded',
+  'pet:drag-start',
+  'pet:drag-move',
+  'pet:drag-end'
 ] as const
 
 function isTrustedRenderer(event: IpcMainInvokeEvent): boolean {
@@ -70,7 +88,9 @@ function isTrustedRenderer(event: IpcMainInvokeEvent): boolean {
     }
   }
   const expected = pathToFileURL(rendererIndexFile()).toString().split('?')[0]
-  return frameUrl.split('?')[0] === expected
+  const petExpected = pathToFileURL(petHtmlFile()).toString().split('?')[0]
+  const normalized = frameUrl.split('?')[0]
+  return normalized === expected || normalized === petExpected
 }
 
 function assertTrusted(event: IpcMainInvokeEvent): void {
@@ -130,7 +150,7 @@ function asServerInput(value: unknown): ServerInput {
 }
 
 export function registerIpc(deps: IpcDeps): void {
-  const { store, sessions, tabs, applyTheme, refreshMenu, refreshTray } = deps
+  const { store, sessions, tabs, pet, applyTheme, refreshMenu, refreshTray } = deps
 
   const broadcastServers = (): void => {
     const servers = store.getSettings().servers
@@ -208,6 +228,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (!store.getServer(id)) throw new ConfigStoreError('服务器不存在或已被删除。')
     await sessions.clear(id)
     tabs.reload(id)
+    void pet.refreshServer(id)
     return true
   })
 
@@ -216,14 +237,27 @@ export function registerIpc(deps: IpcDeps): void {
   handle('settings:update', async (_event, rawPatch): Promise<AppSettings> => {
     const patch = (typeof rawPatch === 'object' && rawPatch !== null
       ? rawPatch
-      : {}) as AppSettings & { shellWidth?: number | null }
+      : {}) as AppSettings & {
+      shellWidth?: number | null
+      pet?: { enabled?: unknown; alwaysOnTop?: unknown }
+    }
     const hasWidth = Object.prototype.hasOwnProperty.call(patch, 'shellWidth')
+    const petPatch =
+      typeof patch.pet === 'object' && patch.pet !== null
+        ? {
+            ...(typeof patch.pet.enabled === 'boolean' ? { enabled: patch.pet.enabled } : {}),
+            ...(typeof patch.pet.alwaysOnTop === 'boolean'
+              ? { alwaysOnTop: patch.pet.alwaysOnTop }
+              : {})
+          }
+        : undefined
     const settings = await store.updateSettings({
       ...(typeof patch.autoConnect === 'boolean' ? { autoConnect: patch.autoConnect } : {}),
       ...(typeof patch.closeToTray === 'boolean' ? { closeToTray: patch.closeToTray } : {}),
       ...(patch.theme === 'system' || patch.theme === 'light' || patch.theme === 'dark'
         ? { theme: patch.theme }
         : {}),
+      ...(petPatch && Object.keys(petPatch).length > 0 ? { pet: petPatch } : {}),
       ...(patch.shellWidth === null
         ? { shellWidth: null }
         : typeof patch.shellWidth === 'number'
@@ -232,6 +266,7 @@ export function registerIpc(deps: IpcDeps): void {
     })
     if (hasWidth) tabs.applyWindowWidth(settings.shellWidth)
     applyTheme(settings.theme)
+    pet.apply(settings)
     broadcastSettings(settings)
     refreshMenu()
     refreshTray()
@@ -246,6 +281,7 @@ export function registerIpc(deps: IpcDeps): void {
       logError(`Failed to refresh open tab ${result.server.id}`, error)
     })
     afterServersChanged()
+    void pet.refreshServers()
     return result
   })
 
@@ -255,6 +291,7 @@ export function registerIpc(deps: IpcDeps): void {
     await sessions.clear(id)
     await store.deleteServer(id)
     afterServersChanged()
+    void pet.refreshServers()
     return true
   })
 
@@ -296,6 +333,7 @@ export function registerIpc(deps: IpcDeps): void {
     } else {
       await tabs.open(server)
     }
+    void pet.refreshServer(id)
     return true
   })
 
@@ -311,6 +349,7 @@ export function registerIpc(deps: IpcDeps): void {
       const tokenUrl = requireString(rawTokenUrl, '启动 URL')
       await tabs.openWithLaunchUrl(server, tokenUrl)
       closeAuthWindow(server.id)
+      void pet.refreshServer(server.id)
       return { ok: true }
     } catch (error) {
       return { ok: false, message: userMessage(error) }
@@ -354,6 +393,55 @@ export function registerIpc(deps: IpcDeps): void {
     const id = requireString(rawId, '服务器 ID')
     tabs.showTabMenu(id)
     return true
+  })
+
+  handle('pet:snapshot', () => pet.getSnapshot())
+
+  handle('pet:focus-server', async (_event, rawId): Promise<boolean> => {
+    const id = requireString(rawId, '服务器 ID')
+    await pet.focusServer(id)
+    return true
+  })
+
+  handle('pet:hide', async (): Promise<boolean> => {
+    await pet.hide()
+    refreshMenu()
+    refreshTray()
+    return true
+  })
+
+  handle('pet:open-manager', (): boolean => {
+    showManager()
+    return true
+  })
+
+  handle('pet:ignore-mouse', (_event, rawIgnore): boolean => {
+    pet.setIgnoreMouseEvents(rawIgnore === true)
+    return true
+  })
+
+  handle('pet:set-expanded', (_event, rawExpanded): boolean => {
+    pet.setExpanded(rawExpanded === true)
+    return true
+  })
+
+  const isPetSender = (event: IpcMainEvent): boolean => {
+    const sender = BrowserWindow.fromWebContents(event.sender)
+    return Boolean(sender && pet.isPetWindow(sender))
+  }
+  ipcMain.removeAllListeners('pet:drag-start')
+  ipcMain.on('pet:drag-start', (event) => {
+    if (isPetSender(event)) pet.beginDrag()
+  })
+  ipcMain.removeAllListeners('pet:drag-move')
+  ipcMain.on('pet:drag-move', (event, screenX, screenY) => {
+    if (!isPetSender(event)) return
+    if (typeof screenX !== 'number' || typeof screenY !== 'number') return
+    pet.dragTo(screenX, screenY)
+  })
+  ipcMain.removeAllListeners('pet:drag-end')
+  ipcMain.on('pet:drag-end', (event) => {
+    if (isPetSender(event)) pet.endDrag()
   })
 
   logInfo(`${APP_NAME} IPC registered`)

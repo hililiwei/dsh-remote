@@ -11,6 +11,7 @@ import { applyUserDataOverride, configFile, logFile } from './paths'
 import { configureAppSecurity } from './security'
 import { SessionManager } from './session-manager'
 import { TabManager } from './tab-manager'
+import { PetManager } from './pet/pet-manager'
 import { destroyTray, isTrayReady, refreshTray, setupTray } from './tray'
 
 applyUserDataOverride()
@@ -20,6 +21,7 @@ if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
 let store: ConfigStore | null = null
 let sessions: SessionManager | null = null
 let tabs: TabManager | null = null
+let pet: PetManager | null = null
 let isQuitting = false
 
 function applyTheme(theme: ThemeMode): void {
@@ -42,11 +44,15 @@ async function openRequestedServer(id: string): Promise<void> {
   await tabs.open(server)
 }
 
-function afterServersChanged(): void {
-  if (!store || !tabs) return
-  const deps = { store, tabs }
+function refreshChrome(): void {
+  if (!store || !tabs || !pet) return
+  const deps = { store, tabs, pet }
   installMenu(deps)
   refreshTray(deps)
+}
+
+function afterServersChanged(): void {
+  refreshChrome()
 }
 
 async function bootstrap(): Promise<void> {
@@ -61,22 +67,31 @@ async function bootstrap(): Promise<void> {
   tabs = new TabManager({
     store,
     sessions,
-    onServersChanged: afterServersChanged
+    onServersChanged: afterServersChanged,
+    onTabsChanged: () => pet?.handleTabsChanged()
+  })
+  pet = new PetManager({
+    store,
+    sessions,
+    tabs,
+    onChanged: refreshChrome
   })
   initManagerWindow(store)
   configureAppSecurity(store, afterServersChanged)
 
-  const deps = { store, tabs }
+  const deps = { store, tabs, pet }
   setupTray(deps)
   installMenu(deps)
   registerIpc({
     store,
     sessions,
     tabs,
+    pet,
     applyTheme,
     refreshMenu: () => installMenu(deps),
     refreshTray: () => refreshTray(deps)
   })
+  pet.start()
 
   app.setAboutPanelOptions({
     applicationName: APP_NAME,
@@ -163,8 +178,15 @@ if (!gotLock) {
     showManager()
   })
 
+  app.on('browser-window-created', (_event, win) => {
+    win.on('closed', () => {
+      pet?.handleWindowClosed()
+    })
+  })
+
   app.on('before-quit', () => {
     isQuitting = true
+    void pet?.destroy()
     closeAllAuthWindows()
     tabs?.closeAll()
   })

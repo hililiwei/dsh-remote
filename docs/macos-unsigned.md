@@ -6,7 +6,7 @@ Windows 安装包同样未签名，首次运行会有 SmartScreen 提示。
 
 ## 1. 安装未签名 DMG
 
-产物文件名形如 `DSH-Remote-0.1.0-mac-universal.dmg`。
+产物文件名形如 `DSH-Remote-0.1.1-mac-universal.dmg`。
 
 1. 双击打开 DMG。
 2. 把 **DSH Remote** 拖进 `/Applications`。
@@ -51,8 +51,8 @@ npm run dist:mac
 
 `npm run dist:mac` 等价于 `npm run build && electron-builder --mac dmg zip --universal`，产出：
 
-- `dist/DSH-Remote-0.1.0-mac-universal.dmg`
-- `dist/DSH-Remote-0.1.0-mac-universal.zip`
+- `dist/DSH-Remote-0.1.1-mac-universal.dmg`
+- `dist/DSH-Remote-0.1.1-mac-universal.zip`
 
 说明：
 

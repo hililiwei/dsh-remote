@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { AppInfo, AppSettings, ThemeMode } from '@shared/types'
+import type { AppInfo, AppSettings, AppSettingsPatch, ThemeMode } from '@shared/types'
 
-export type SettingsPatch = Partial<
-  Pick<AppSettings, 'autoConnect' | 'closeToTray' | 'theme'>
-> & {
-  shellWidth?: number | null
-}
+export type SettingsPatch = AppSettingsPatch
 
 interface SettingsPanelProps {
   settings: AppSettings
@@ -98,6 +94,46 @@ export default function SettingsPanel({
               disabled={saving}
               aria-label="关闭窗口时最小化到托盘"
               data-testid="settings-close-to-tray"
+            />
+            <span className="switch__track" aria-hidden="true" />
+          </label>
+        </div>
+
+        <div className="setting-row">
+          <div className="setting-row__text">
+            <span className="setting-row__title">显示桌面宠物</span>
+            <span className="setting-row__desc">
+              在右下角显示一个始终置顶的宠物，汇总所有已连接服务器的运行、完成和待确认状态。
+            </span>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={settings.pet.enabled}
+              onChange={(event) => onChange({ pet: { enabled: event.target.checked } })}
+              disabled={saving}
+              aria-label="显示桌面宠物"
+              data-testid="settings-pet-enabled"
+            />
+            <span className="switch__track" aria-hidden="true" />
+          </label>
+        </div>
+
+        <div className="setting-row">
+          <div className="setting-row__text">
+            <span className="setting-row__title">宠物始终置顶</span>
+            <span className="setting-row__desc">
+              关闭后宠物仍会显示，但可能被其他应用窗口遮挡；切换标签页不会让它消失。
+            </span>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={settings.pet.alwaysOnTop}
+              onChange={(event) => onChange({ pet: { alwaysOnTop: event.target.checked } })}
+              disabled={saving || !settings.pet.enabled}
+              aria-label="宠物始终置顶"
+              data-testid="settings-pet-always-on-top"
             />
             <span className="switch__track" aria-hidden="true" />
           </label>
