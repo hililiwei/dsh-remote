@@ -187,7 +187,8 @@ function clearIdleTimer(): void {
 
 function scheduleIdleAction(): void {
   clearIdleTimer()
-  if (state !== 'idle') return
+  // Running has no dedicated animation set; it shares the idle rotation.
+  if (state !== 'idle' && state !== 'running') return
   idleTimer = window.setTimeout(() => {
     idleTimer = undefined
     if (state !== 'idle') return
@@ -213,8 +214,8 @@ function playState(): void {
     return
   }
   if (state === 'running') {
-    const name = pick(ANIM.workStatus.slice(0, 3))
-    if (name) switchTo(name, { loop: true })
+    // No running-specific animation: use the same random idle rotation.
+    playIdleBase()
     return
   }
   if (state === 'done') {
