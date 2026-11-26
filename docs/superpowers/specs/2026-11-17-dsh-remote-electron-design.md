@@ -21,7 +21,7 @@
 
 - 官方 DeepSeek Harness Desktop 已安装在 `D:\Programs\DeepSeek Harness`（0.2.2-rc.1），但它的 Electron 主进程会启动本地 `dsh` Host，且与其他 DSH 实例互斥；没有远程地址配置。因此不能通过修改官方 Desktop 配置实现需求。
 - `dsh web` 启动时打印形如 `dsh web: https://host/?token=...` 的 URL。该 token 是进程启动令牌，只用于换取签名 cookie；cookie 的签名密钥持久化，默认有效期以天计。因此客户端只需在首次/失效时接收 token URL，之后依赖持久 cookie。
-- 远程访问受 Host/Origin fence、反向代理、TLS 和公司代理影响。用户机器上存在 `company-proxy` 系统代理，`ProxyOverride` 已覆盖 `127.0.0.1`、`10.*` 等内网地址。
+- 远程访问受 Host/Origin fence、反向代理、TLS 和公司代理影响。用户机器上存在 `公司代理`，`ProxyOverride` 已覆盖 `127.0.0.1`、`10.*` 等内网地址。
 - 用户机器有 .NET 9 和 WebView2，但跨端要求排除 WPF。
 - 这台机器只能构建和验证 Windows 产物；macOS 产物需要 macOS 或 CI，且不做签名/公证。
 
