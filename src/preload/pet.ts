@@ -16,6 +16,7 @@ const api: DshPetApi = {
   setIgnoreMouseEvents: (ignore) =>
     ipcRenderer.invoke('pet:ignore-mouse', ignore) as Promise<void>,
   setExpanded: (expanded) => ipcRenderer.invoke('pet:set-expanded', expanded) as Promise<void>,
+  setCompact: (compact) => ipcRenderer.invoke('pet:set-compact', compact) as Promise<void>,
   setCardBounds: (bounds) => ipcRenderer.send('pet:card-bounds', bounds),
   beginDrag: () => ipcRenderer.send('pet:drag-start'),
   dragTo: (screenX, screenY) => ipcRenderer.send('pet:drag-move', screenX, screenY),

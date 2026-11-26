@@ -73,6 +73,7 @@ const CHANNELS = [
   'pet:open-manager',
   'pet:ignore-mouse',
   'pet:set-expanded',
+  'pet:set-compact',
   'pet:card-bounds',
   'pet:drag-start',
   'pet:drag-move',
@@ -425,6 +426,11 @@ export function registerIpc(deps: IpcDeps): void {
 
   handle('pet:set-expanded', (_event, rawExpanded): boolean => {
     pet.setExpanded(rawExpanded === true)
+    return true
+  })
+
+  handle('pet:set-compact', (_event, rawCompact): boolean => {
+    pet.setCompact(rawCompact === true)
     return true
   })
 

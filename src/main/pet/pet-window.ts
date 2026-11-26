@@ -44,6 +44,7 @@ export const PET_DIMENSIONS: Record<PetSize, PetDimensions> = {
   }
 }
 const PET_MARGIN = 20
+const COMPACT_SIZE = { width: 390, height: 54 }
 
 export const PET_SIZE = {
   width: PET_DIMENSIONS.medium.width,
@@ -60,6 +61,7 @@ export interface PetWindowController {
   setAlwaysOnTop(enabled: boolean): void
   setIgnoreMouseEvents(ignore: boolean): void
   setExpanded(expanded: boolean): void
+  setCompact(compact: boolean): void
   setPetSize(size: PetSize): void
   setCardBounds(bounds: PetCardBounds | null): void
   beginDrag(): void
@@ -122,6 +124,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   let saveTimer: NodeJS.Timeout | undefined
   let dragStart: { cursor: { x: number; y: number }; bounds: Rectangle } | null = null
   let expanded = false
+  let compact = false
   let cardBounds: Rectangle | null = null
   
   const bounds = restoredPetBounds(store, petSize)
@@ -341,6 +344,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       scheduleBoundsSave()
     },
     setExpanded(nextExpanded: boolean): void {
+      if (compact) return
       expanded = nextExpanded
       if (!nextExpanded) cardBounds = null
       if (!win || win.isDestroyed()) return
@@ -358,10 +362,30 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       )
       win.setBounds({ x, y, width: dims.width, height }, false)
     },
+    setCompact(nextCompact: boolean): void {
+      if (compact === nextCompact) return
+      compact = nextCompact
+      if (!win || win.isDestroyed()) return
+      const dims = nextCompact ? COMPACT_SIZE : PET_DIMENSIONS[petSize]
+      expanded = false
+      cardBounds = null
+      win.setMinimumSize(dims.width, dims.height)
+      win.setMaximumSize(dims.width, nextCompact ? dims.height : PET_DIMENSIONS[petSize].expandedHeight)
+      const currentBounds = win.getBounds()
+      const workArea = screen.getDisplayMatching(currentBounds).workArea
+      const width = dims.width
+      const height = dims.height
+      const right = currentBounds.x + currentBounds.width
+      const bottom = currentBounds.y + currentBounds.height
+      const x = Math.max(workArea.x, Math.min(right - width, workArea.x + workArea.width - width))
+      const y = Math.max(workArea.y, Math.min(bottom - height, workArea.y + workArea.height - height))
+      win.setBounds({ x, y, width, height }, false)
+    },
     setPetSize(size: PetSize): void {
       if (size === petSize) return
       petSize = size
       cardBounds = null
+      if (compact) return
       if (!win || win.isDestroyed()) return
       const dims = PET_DIMENSIONS[size]
       win.setMinimumSize(dims.width, dims.height)

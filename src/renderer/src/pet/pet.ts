@@ -56,6 +56,7 @@ let snapshot: PetSnapshot = {
 }
 let root: HTMLDivElement
 let bubble: HTMLDivElement
+let compactBar: HTMLDivElement
 let card: HTMLDivElement
 let cardBody: HTMLDivElement
 let countsEl: HTMLDivElement
@@ -65,6 +66,7 @@ let fallback: HTMLImageElement
 let videoA: HTMLVideoElement
 let videoB: HTMLVideoElement
 let open = false
+let compact = false
 let bubbleTimer: number | undefined
 let bubbleDigest = ''
 let cardSignature = ''
@@ -301,6 +303,31 @@ function scheduleAutoClose(): void {
 
 function applyPetSize(size: PetSize): void {
   if (root) root.dataset.size = size
+}
+
+function renderCompact(): void {
+  if (!compactBar) return
+  const counts = snapshot.counts
+  const parts: string[] = []
+  if (counts.needsYou > 0) parts.push(`${counts.needsYou} 个待确认`)
+  if (counts.running > 0) parts.push(`${counts.running} 个运行中`)
+  if (counts.done > 0) parts.push(`${counts.done} 个已完成`)
+  if (counts.idle > 0) parts.push(`${counts.idle} 个空闲`)
+  compactBar.textContent = parts.length > 0 ? parts.join(' · ') : '空闲'
+  compactBar.dataset.state = stateOf(counts)
+}
+
+async function toggleCompact(): Promise<void> {
+  compact = !compact
+  root.classList.toggle('is-compact', compact)
+  if (compact) {
+    if (open) await setOpen(false)
+    renderCompact()
+    await window.dshPet.setCompact(true).catch(() => undefined)
+  } else {
+    await window.dshPet.setCompact(false).catch(() => undefined)
+    playState()
+  }
 }
 
 function reportCardBounds(): void {
@@ -552,6 +579,7 @@ function render(): void {
   }
   button.setAttribute('aria-label', summaryText(snapshot.counts, snapshot.servers.length))
   renderCounts()
+  renderCompact()
   renderCard()
   setBubble(summaryText(snapshot.counts, snapshot.servers.length))
 }
@@ -575,6 +603,15 @@ function build(): void {
 
   bubble = h('div', 'pet-bubble')
   bubble.hidden = true
+
+  compactBar = h('div', 'pet-compact')
+  compactBar.setAttribute('role', 'status')
+  compactBar.setAttribute('aria-live', 'polite')
+  compactBar.title = '右键恢复宠物'
+  compactBar.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+    void toggleCompact()
+  })
 
   card = h('div', 'pet-card')
   card.hidden = true
@@ -618,6 +655,10 @@ function build(): void {
   badge = h('span', 'pet-badge')
   badge.hidden = true
   button.append(badge)
+  button.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+    void toggleCompact()
+  })
 
   const finishPointer = (): void => {
     window.dshPet.endDrag()
@@ -661,7 +702,7 @@ function build(): void {
     playClick()
   })
 
-  root.append(bubble, card, button)
+  root.append(bubble, compactBar, card, button)
 
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && open) void setOpen(false)
@@ -672,7 +713,7 @@ function build(): void {
   }
   window.addEventListener('mousemove', (event) => {
     const target = event.target instanceof Element ? event.target : null
-    setMousePassthrough(!target?.closest('.pet-button, .pet-card'))
+    setMousePassthrough(!target?.closest('.pet-button, .pet-card, .pet-compact'))
   })
   window.addEventListener('mouseleave', () => setMousePassthrough(true))
   setMousePassthrough(true)
@@ -695,5 +736,6 @@ if (document.readyState === 'loading') {
 } else {
   build()
 }
+
 
 

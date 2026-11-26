@@ -126,6 +126,7 @@ export interface DshPetApi {
   openManager(): Promise<void>
   setIgnoreMouseEvents(ignore: boolean): Promise<void>
   setExpanded(expanded: boolean): Promise<void>
+  setCompact(compact: boolean): Promise<void>
   setCardBounds(bounds: PetCardBounds | null): void
   beginDrag(): void
   dragTo(screenX: number, screenY: number): void
