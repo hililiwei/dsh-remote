@@ -24,7 +24,7 @@ DSH Remote 是一个跨平台桌面客户端（Windows / macOS），用来在**�
 - **代理模式**：每个服务器可选“系统代理”（默认）或“直连”，用于公司代理误拦内网地址的场景。
 - **自签名证书**：默认拒绝无效证书；可对单个服务器显式信任，仅该服务器的 origin 放行。
 - **多标签页**：同一窗口顶部 Tab 栏管理多个后端；支持切换、关闭、`+` 新建、`Ctrl/Cmd+1..9` 切换、`Ctrl/Cmd+W` 关闭；重启后恢复上次打开的标签页。
-- **桌面宠物**：常驻透明置顶宠物窗口，汇总所有已打开远程标签页的对话状态；可拖拽移动，点击展开对话面板，鼠标离开面板 5 秒后自动收起；右上角状态灯为：蓝色运行中、黄色等你确认、绿色刚完成，无状态时隐藏。宠物形象为原创“御姐·深蓝”，含站/坐/蹲/趴四种动态待机，以及晨起、读写、家务、出门、运动等生活动作；尺寸可切换小/中/大；透明区域不拦截桌面点击，不占任务栏，卡片按标签页分组，可一键切换远程，默认只展开运行中、等你确认和刚完成的对话，空闲对话折叠隐藏。
+- **桌面宠物**：常驻透明置顶宠物窗口，汇总所有已打开远程标签页的对话状态；可拖拽移动，点击展开对话面板，鼠标离开面板 5 秒后自动收起；右上角状态灯为：蓝色运行中、黄色等你确认、绿色刚完成，无状态时隐藏。宠物形象为原创“御姐·深蓝”，含站/坐/蹲三种动态待机，以及晨起、读写、家务、出门、运动、梳妆、厨房、出游、宴会、舞台等 18 类生活动作；尺寸可切换小/中/大；透明区域不拦截桌面点击，不占任务栏，卡片按标签页分组，可一键切换远程，默认只展开运行中、等你确认和刚完成的对话，空闲对话折叠隐藏。
 - **桌面体验**：主窗口、菜单、托盘、窗口大小/位置记忆、单实例、外链交给系统浏览器、下载可用。
 - 中文界面。
 
@@ -38,7 +38,7 @@ DSH Remote 是一个跨平台桌面客户端（Windows / macOS），用来在**�
 
 ### 方式一：NSIS 安装器
 
-1. 获取 `DSH-Remote-0.1.1-win-x64-setup.exe`。
+1. 获取 `DSH-Remote-0.1.2-win-x64-setup.exe`。
 2. 双击安装。安装器是 **assisted / per-user（当前用户）** 模式，不需要管理员权限；会显示安装路径页，默认 `%LOCALAPPDATA%\Programs\DSH Remote`，可改成 `D:\Apps\DSH Remote` 等当前用户可写目录。
 3. 安装器会先检测旧的 DSH Remote 安装（包括之前用 ZIP 脚本安装的版本），移除旧程序文件、快捷方式和卸载项，再安装新版本；`%APPDATA%\DSH Remote` 里的服务器配置和登录 cookie 会保留。
 4. 安装器会创建开始菜单和桌面快捷方式，并在“设置 → 应用”里注册卸载项。
@@ -49,7 +49,7 @@ DSH Remote 是一个跨平台桌面客户端（Windows / macOS），用来在**�
 
 ### 方式二：ZIP 便携包 + 安装脚本（推荐用于受管环境）
 
-1. 获取 `DSH-Remote-0.1.1-win-x64-portable.zip` 并解压到任意目录。
+1. 获取 `DSH-Remote-0.1.2-win-x64-portable.zip` 并解压到任意目录。
 2. 双击 `install.cmd`（或运行 `powershell -NoProfile -Sta -ExecutionPolicy Bypass -File install.ps1`）。
 3. 脚本会先检测旧的 DSH Remote 安装（包括 NSIS 安装的版本），移除旧程序文件、快捷方式和卸载项；`%APPDATA%\DSH Remote` 里的服务器配置和登录 cookie 会保留。
 4. 脚本会弹出一个输入框，默认路径为 `%LOCALAPPDATA%\Programs\DSH Remote`；直接确定使用默认值，或改成 `D:\Apps\DSH Remote` 这类当前用户可写目录。随后创建带 `--no-sandbox` 的开始菜单/桌面快捷方式，并注册卸载项。
@@ -170,8 +170,8 @@ npm run dist:mac   # 仅 macOS：编译并打 universal dmg + zip
 说明：
 
 - 打包产物输出到 `dist/`（已在 `.gitignore` 中忽略）。
-- `dist:win` 产出 `dist/DSH-Remote-0.1.1-win-x64-setup.exe`；`dist:portable` 产出同目录的 portable exe；`dist:mac` 产出 `dist/DSH-Remote-0.1.1-mac-universal.dmg` 和 `.zip`。
-- 受管 Windows 环境下建议分发 `dist/DSH-Remote-0.1.1-win-x64-portable.zip`（包含 `install.cmd`），它不依赖 NSIS。
+- `dist:win` 产出 `dist/DSH-Remote-0.1.2-win-x64-setup.exe`；`dist:portable` 产出同目录的 portable exe；`dist:mac` 产出 `dist/DSH-Remote-0.1.2-mac-universal.dmg` 和 `.zip`。
+- 受管 Windows 环境下建议分发 `dist/DSH-Remote-0.1.2-win-x64-portable.zip`（包含 `install.cmd`），它不依赖 NSIS。
 - `dist:mac` 只能在 macOS（或 CI 的 macOS runner）上执行；universal 构建会同时打包 x64 与 arm64。
 - 所有产物都未签名：Windows 会有 SmartScreen 提示，macOS 首次打开需要放行，见 [macOS 未签名安装](docs/macos-unsigned.md)。
 - 图标由 `scripts/generate-icons.mjs` 用 Node 标准库绘制，再用 `png2icons` 生成 `.ico` / `.icns`；图案为自制，不使用官方 DSH 商标素材。
@@ -185,4 +185,5 @@ npm run dist:mac   # 仅 macOS：编译并打 universal dmg + zip
 ## 许可证
 
 MIT，详见 [LICENSE](LICENSE)。
+
 
