@@ -69,6 +69,8 @@ export interface DshSessionSummary {
   sessionId: string
   updatedAt?: number
   running?: boolean
+  agentAvailable?: boolean
+  pendingInput?: Array<'approval' | 'question' | 'other'>
   blank?: boolean
   origin?: string
   cwd?: string

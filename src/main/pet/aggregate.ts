@@ -72,7 +72,10 @@ function pendingPlan(values: Record<string, unknown>): boolean {
 /** A pending interaction outranks every other state; it is what the user must act on. */
 export function hasPendingInteraction(summary: DshSessionSummary): boolean {
   const values = projectionValues(summary)
-  return activeUserQuestions(values) || pendingPlan(values)
+  const statePending = summary.pendingInput?.some(
+    (input) => input === 'approval' || input === 'question'
+  )
+  return Boolean(statePending) || activeUserQuestions(values) || pendingPlan(values)
 }
 
 export function sessionTitle(summary: DshSessionSummary): string {

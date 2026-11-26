@@ -39,6 +39,19 @@ describe('pet aggregate', () => {
     expect(snapshot.counts).toEqual({ needsYou: 0, running: 0, done: 0, idle: 1, total: 1 })
   })
 
+  it('treats a live approval/question state as needs-you', () => {
+    const snapshot = aggregateServerSnapshot({
+      server: { id: 's', name: 'S', baseUrl: 'http://localhost/' },
+      status: 'online',
+      sessions: [summary({ sessionId: 'approval', running: true, pendingInput: ['approval'] })],
+      workspaces: [],
+      archivedSessionIds: [],
+      doneIds: new Set()
+    })
+    expect(snapshot.sessions[0]?.state).toBe('needs-you')
+    expect(snapshot.counts.needsYou).toBe(1)
+  })
+
   it('ranks needs-you above running, done and idle', () => {
     const snapshot = aggregateServerSnapshot({
       server: { id: 's', name: 'S', baseUrl: 'http://localhost/' },

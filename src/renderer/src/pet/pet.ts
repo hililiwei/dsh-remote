@@ -312,7 +312,6 @@ function renderCompact(): void {
   if (counts.needsYou > 0) parts.push(`${counts.needsYou} 个待确认`)
   if (counts.running > 0) parts.push(`${counts.running} 个运行中`)
   if (counts.done > 0) parts.push(`${counts.done} 个已完成`)
-  if (counts.idle > 0) parts.push(`${counts.idle} 个空闲`)
   compactBar.textContent = parts.length > 0 ? parts.join(' · ') : '空闲'
   compactBar.dataset.state = stateOf(counts)
 }

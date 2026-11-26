@@ -329,6 +329,24 @@ export class HeadlessDshClient {
         (item: unknown): item is DshSessionSummary =>
           typeof item === 'object' && item !== null && typeof (item as { sessionId?: unknown }).sessionId === 'string'
       )
+      const active = this.sessions.filter(
+        (session) => session.running === true || session.agentAvailable === true
+      )
+      await Promise.all(
+        active.map(async (session) => {
+          try {
+            const state = await this.ctx.remote.session.state({ sessionId: session.sessionId })
+            if (state?.ok && Array.isArray(state.value?.pendingInput)) {
+              session.pendingInput = state.value.pendingInput.filter(
+                (input: unknown): input is 'approval' | 'question' | 'other' =>
+                  input === 'approval' || input === 'question' || input === 'other'
+              )
+            }
+          } catch {
+            // Approval state is a best-effort enrichment; session.list remains authoritative.
+          }
+        })
+      )
       if (this.status !== 'online') this.setStatus('online')
       this.emitSnapshot()
     } catch (error) {
