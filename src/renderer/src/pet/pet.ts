@@ -149,7 +149,7 @@ function assetUrl(name: string): string {
 }
 
 function fallbackUrl(): string {
-  return new URL('./pet/elegant/portrait.png', window.location.href).href
+  return new URL('./pet/elegant/portrait.jpg', window.location.href).href
 }
 
 function elementFor(slot: number): HTMLVideoElement {
@@ -736,6 +736,7 @@ if (document.readyState === 'loading') {
 } else {
   build()
 }
+
 
 
 
