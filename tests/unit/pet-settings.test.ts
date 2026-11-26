@@ -22,17 +22,6 @@ describe('ConfigStore pet size', () => {
     expect((await reloaded.load()).pet.size).toBe('large')
   })
 
-  it('persists the cartoon/elegant skin choice', async () => {
-    const { file, store } = await makeStore()
-    expect((await store.load()).pet.skin).toBe('cartoon')
-
-    const updated = await store.updateSettings({ pet: { skin: 'elegant' } })
-    expect(updated.pet.skin).toBe('elegant')
-
-    const reloaded = new ConfigStore(file)
-    expect((await reloaded.load()).pet.skin).toBe('elegant')
-  })
-
   it('ignores an invalid size', async () => {
     const { store } = await makeStore()
     await store.load()
@@ -40,4 +29,5 @@ describe('ConfigStore pet size', () => {
     expect(updated.pet.size).toBe('medium')
   })
 })
+
 

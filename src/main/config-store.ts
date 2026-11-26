@@ -31,7 +31,7 @@ function defaults(): AppSettings {
     autoConnect: true,
     closeToTray: false,
     theme: 'system',
-    pet: { enabled: true, alwaysOnTop: true, size: 'medium', skin: 'cartoon' },
+    pet: { enabled: true, alwaysOnTop: true, size: 'medium' },
     windowBounds: {}
   }
 }
@@ -141,9 +141,6 @@ function sanitize(raw: unknown): AppSettings {
     }
     if (raw.pet.size === 'small' || raw.pet.size === 'medium' || raw.pet.size === 'large') {
       settings.pet.size = raw.pet.size
-    }
-    if (raw.pet.skin === 'cartoon' || raw.pet.skin === 'elegant') {
-      settings.pet.skin = raw.pet.skin
     }
   }
   if (
@@ -323,9 +320,6 @@ export class ConfigStore {
         patch.pet.size === 'large'
       ) {
         this.settings.pet.size = patch.pet.size
-      }
-      if (patch.pet.skin === 'cartoon' || patch.pet.skin === 'elegant') {
-        this.settings.pet.skin = patch.pet.skin
       }
     }
     if (patch.shellWidth === null) {

@@ -41,10 +41,7 @@ extraResources:
       - tray.png
       - trayTemplate.png
       - trayTemplate@2x.png
-  - from: third_party
-    to: third_party
-  - from: THIRD_PARTY_NOTICES.md
-    to: THIRD_PARTY_NOTICES.md
+
 
 win:
   target:

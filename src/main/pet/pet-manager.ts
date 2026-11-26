@@ -37,7 +37,6 @@ export class PetManager {
     openTabs: [],
     counts: { needsYou: 0, running: 0, done: 0, idle: 0, total: 0 },
     petSize: 'medium',
-    petSkin: 'cartoon',
     updatedAt: Date.now()
   }
   
@@ -45,7 +44,6 @@ export class PetManager {
   constructor(private readonly deps: PetManagerDeps) {
     this.settings = deps.store.getSettings()
     this.snapshot.petSize = this.settings.pet.size
-    this.snapshot.petSkin = this.settings.pet.skin
   }
 
   start(): void {
@@ -299,8 +297,7 @@ handleTabsChanged(): void {
     this.snapshot = mergePetSnapshots(
       servers,
       openTabs,
-      this.settings.pet.size,
-      this.settings.pet.skin
+      this.settings.pet.size
     )
     this.window?.send(this.snapshot)
   }
@@ -312,5 +309,6 @@ handleTabsChanged(): void {
     this.clients.clear()
   }
 }
+
 
 

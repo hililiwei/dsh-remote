@@ -5,11 +5,9 @@ import type {
   PetSession,
   PetSessionState,
   PetSize,
-  PetSkin,
   PetSnapshot
 } from '@shared/pet'
-import cartoonManifest from './animation-manifest.json'
-import elegantManifest from './animation-manifest-elegant.json'
+import manifest from './animation-manifest.json'
 
 interface AnimationManifest {
   idle: string[]
@@ -18,12 +16,7 @@ interface AnimationManifest {
   workStatus: string[]
 }
 
-const MANIFESTS: Record<PetSkin, AnimationManifest> = {
-  cartoon: cartoonManifest as AnimationManifest,
-  elegant: elegantManifest as AnimationManifest
-}
-let ANIM: AnimationManifest = MANIFESTS.cartoon
-let currentSkin: PetSkin = 'cartoon'
+const ANIM = manifest as AnimationManifest
 const EMPTY_COUNTS: PetCounts = {
   needsYou: 0,
   running: 0,
@@ -59,7 +52,6 @@ let snapshot: PetSnapshot = {
   openTabs: [],
   counts: EMPTY_COUNTS,
   petSize: 'medium',
-  petSkin: 'cartoon',
   updatedAt: 0
 }
 let root: HTMLDivElement
@@ -151,27 +143,11 @@ function randomCategoryAction(): string | undefined {
 }
 
 function assetUrl(name: string): string {
-  const directory = currentSkin === 'elegant' ? './pet/elegant/webm' : './pet/webm'
-  return new URL(`${directory}/${encodeURIComponent(name)}.webm`, window.location.href).href
+  return new URL(`./pet/elegant/webm/${encodeURIComponent(name)}.webm`, window.location.href).href
 }
 
-function fallbackUrl(skin: PetSkin): string {
-  return new URL(
-    skin === 'elegant' ? './pet/elegant/portrait.png' : './pet/main-character.png',
-    window.location.href
-  ).href
-}
-
-function applySkin(skin: PetSkin): void {
-  if (skin === currentSkin) return
-  currentSkin = skin
-  ANIM = MANIFESTS[skin]
-  currentAnim = ''
-  currentLoop = true
-  switchSerial += 1
-  donePlayed = false
-  if (fallback) fallback.src = fallbackUrl(skin)
-  playState()
+function fallbackUrl(): string {
+  return new URL('./pet/elegant/portrait.png', window.location.href).href
 }
 
 function elementFor(slot: number): HTMLVideoElement {
@@ -554,7 +530,6 @@ function renderCounts(): void {
 
 function render(): void {
   applyPetSize(snapshot.petSize ?? 'medium')
-  applySkin(snapshot.petSkin ?? 'cartoon')
   const nextState = stateOf(snapshot.counts)
   if (nextState !== currentState) {
     currentState = nextState
@@ -636,7 +611,7 @@ function build(): void {
   videoB = createVideo()
   videoA.classList.add('is-front')
   fallback = h('img', 'pet-fallback')
-  fallback.src = fallbackUrl('cartoon')
+  fallback.src = fallbackUrl()
   fallback.alt = '桌面宠物'
   fallback.draggable = false
   button.append(fallback, videoA, videoB)

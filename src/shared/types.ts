@@ -1,5 +1,5 @@
 export type ProxyMode = 'system' | 'direct'
-import type { PetSize, PetSkin } from './pet'
+import type { PetSize } from './pet'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type ServerStatus = 'online' | 'auth-required' | 'forbidden' | 'error' | 'offline'
@@ -36,7 +36,6 @@ export interface PetSettings {
   enabled: boolean
   alwaysOnTop: boolean
   size: PetSize
-  skin: PetSkin
 }
 
 export interface AppSettings {
