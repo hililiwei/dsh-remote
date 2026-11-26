@@ -13,10 +13,6 @@ directories:
   output: dist
   buildResources: build
 
-# Use the Electron runtime already installed with npm instead of downloading a
-# second copy from GitHub (managed Windows networks often reset that download).
-electronDist: node_modules/electron/dist
-
 toolsets:
   nsis: "1.2.1"
 
