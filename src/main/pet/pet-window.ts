@@ -19,28 +19,28 @@ export interface PetDimensions {
 
 export const PET_DIMENSIONS: Record<PetSize, PetDimensions> = {
   small: {
-    width: 480,
-    height: 360,
-    expandedHeight: 820,
-    buttonWidth: 400,
-    buttonHeight: 240,
-    cardWidth: 440
+    width: 420,
+    height: 315,
+    expandedHeight: 730,
+    buttonWidth: 350,
+    buttonHeight: 210,
+    cardWidth: 390
   },
   medium: {
-    width: 600,
-    height: 430,
-    expandedHeight: 960,
-    buttonWidth: 500,
-    buttonHeight: 300,
-    cardWidth: 540
+    width: 520,
+    height: 375,
+    expandedHeight: 860,
+    buttonWidth: 440,
+    buttonHeight: 264,
+    cardWidth: 480
   },
   large: {
-    width: 720,
-    height: 510,
-    expandedHeight: 1120,
-    buttonWidth: 600,
-    buttonHeight: 360,
-    cardWidth: 640
+    width: 620,
+    height: 440,
+    expandedHeight: 1000,
+    buttonWidth: 520,
+    buttonHeight: 310,
+    cardWidth: 560
   }
 }
 const PET_MARGIN = 20
@@ -57,6 +57,7 @@ export interface PetWindowController {
   hide(): void
   toggle(): void
   isVisible(): boolean
+  reload(): void
   send(snapshot: PetSnapshot): void
   setAlwaysOnTop(enabled: boolean): void
   setIgnoreMouseEvents(ignore: boolean): void
@@ -297,6 +298,9 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     isVisible(): boolean {
       return Boolean(win && !win.isDestroyed() && win.isVisible())
     },
+    reload(): void {
+      if (win && !win.isDestroyed()) win.webContents.reload()
+    },
     send(snapshot: PetSnapshot): void {
       latestSnapshot = snapshot
       if (!win || win.isDestroyed()) return
@@ -436,3 +440,4 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   }
   return controller
 }
+

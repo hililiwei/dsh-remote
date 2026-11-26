@@ -23,6 +23,7 @@ import type {
   WindowContext
 } from '../shared/types'
 import type { PetManager } from './pet/pet-manager'
+import { getPetPackInfo, openPetPackDir } from './pet/pet-pack'
 import { closeAuthWindow } from './auth-window'
 import { AuthInputError, AuthRequiredError, NavigationError } from './connection'
 import { ConfigStore, ConfigStoreError } from './config-store'
@@ -71,6 +72,9 @@ const CHANNELS = [
   'pet:focus-server',
   'pet:hide',
   'pet:open-manager',
+  'pet:pack',
+  'pet:open-pack-dir',
+  'app:open-pet-pack',
   'pet:ignore-mouse',
   'pet:set-expanded',
   'pet:set-compact',
@@ -419,6 +423,18 @@ export function registerIpc(deps: IpcDeps): void {
     return true
   })
 
+  handle('pet:pack', () => getPetPackInfo())
+
+  handle('pet:open-pack-dir', async (): Promise<boolean> => {
+    await openPetPackDir()
+    return true
+  })
+
+  handle('app:open-pet-pack', async (): Promise<boolean> => {
+    await openPetPackDir()
+    return true
+  })
+
   handle('pet:ignore-mouse', (_event, rawIgnore): boolean => {
     pet.setIgnoreMouseEvents(rawIgnore === true)
     return true
@@ -479,3 +495,4 @@ export function registerIpc(deps: IpcDeps): void {
 
   logInfo(`${APP_NAME} IPC registered`)
 }
+

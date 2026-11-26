@@ -57,6 +57,27 @@ export interface PetOpenTab {
   active: boolean
 }
 
+export interface PetAnimationCategory {
+  id: string
+  weight: number
+  actions: string[]
+}
+
+export interface PetAnimationManifest {
+  idle: string[]
+  clicks: string[]
+  categories: PetAnimationCategory[]
+  workStatus: string[]
+}
+
+export interface PetPackInfo {
+  manifest: PetAnimationManifest
+  source: 'bundled' | 'external'
+  baseUrl: string
+  files: string[]
+  portrait: string | null
+}
+
 export interface PetSnapshot {
   servers: PetServerSnapshot[]
   openTabs: PetOpenTab[]
@@ -126,6 +147,8 @@ export interface DshPetApi {
   focusServer(serverId: string): Promise<void>
   hide(): Promise<void>
   openManager(): Promise<void>
+  getPack(): Promise<PetPackInfo>
+  openPackDir(): Promise<void>
   setIgnoreMouseEvents(ignore: boolean): Promise<void>
   setExpanded(expanded: boolean): Promise<void>
   setCompact(compact: boolean): Promise<void>

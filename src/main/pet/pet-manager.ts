@@ -119,6 +119,10 @@ export class PetManager {
     this.window?.setCompact(compact)
   }
 
+  reloadPack(): void {
+    this.window?.reload()
+  }
+
   setCardBounds(bounds: Parameters<PetWindowController['setCardBounds']>[0]): void {
     this.window?.setCardBounds(bounds)
   }

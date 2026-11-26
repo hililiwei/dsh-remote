@@ -13,6 +13,8 @@ const api: DshPetApi = {
   focusServer: (serverId) => ipcRenderer.invoke('pet:focus-server', serverId) as Promise<void>,
   hide: () => ipcRenderer.invoke('pet:hide') as Promise<void>,
   openManager: () => ipcRenderer.invoke('pet:open-manager') as Promise<void>,
+  getPack: () => ipcRenderer.invoke('pet:pack') as Promise<import('../shared/pet').PetPackInfo>,
+  openPackDir: () => ipcRenderer.invoke('pet:open-pack-dir') as Promise<void>,
   setIgnoreMouseEvents: (ignore) =>
     ipcRenderer.invoke('pet:ignore-mouse', ignore) as Promise<void>,
   setExpanded: (expanded) => ipcRenderer.invoke('pet:set-expanded', expanded) as Promise<void>,

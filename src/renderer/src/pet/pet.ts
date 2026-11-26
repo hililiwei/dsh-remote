@@ -1,5 +1,7 @@
 import type {
+  PetAnimationManifest,
   PetCounts,
+  PetPackInfo,
   PetServerSnapshot,
   PetServerStatus,
   PetSession,
@@ -7,16 +9,11 @@ import type {
   PetSize,
   PetSnapshot
 } from '@shared/pet'
-import manifest from './animation-manifest.json'
+import bundledManifest from './animation-manifest.json'
 
-interface AnimationManifest {
-  idle: string[]
-  clicks: string[]
-  categories: Array<{ id: string; weight: number; actions: string[] }>
-  workStatus: string[]
-}
-
-const ANIM = manifest as AnimationManifest
+const BUNDLED_MANIFEST = bundledManifest as PetAnimationManifest
+let ANIM: PetAnimationManifest | null = null
+let packInfo: PetPackInfo | null = null
 const EMPTY_COUNTS: PetCounts = {
   needsYou: 0,
   running: 0,
@@ -127,6 +124,7 @@ function pick<T>(items: readonly T[]): T | undefined {
 }
 
 function randomCategoryAction(): string | undefined {
+  if (!ANIM) return undefined
   const categories = ANIM.categories.filter((category) => category.actions.length > 0)
   const total = categories.reduce((sum, category) => sum + category.weight, 0)
   if (total <= 0) return undefined
@@ -144,11 +142,21 @@ function randomCategoryAction(): string | undefined {
   return undefined
 }
 
-function assetUrl(name: string): string {
+function bundledAssetUrl(name: string): string {
   return new URL(`./pet/elegant/webm/${encodeURIComponent(name)}.webm`, window.location.href).href
 }
 
+function assetUrl(name: string): string {
+  if (packInfo?.files.includes(`${name}.webm`)) {
+    return `${packInfo.baseUrl}/webm/${encodeURIComponent(name)}.webm`
+  }
+  return bundledAssetUrl(name)
+}
+
 function fallbackUrl(): string {
+  if (packInfo?.portrait) {
+    return `${packInfo.baseUrl}/${encodeURIComponent(packInfo.portrait)}`
+  }
   return new URL('./pet/elegant/portrait.jpg', window.location.href).href
 }
 
@@ -184,12 +192,14 @@ function scheduleIdleAction(): void {
 }
 
 function playIdleBase(schedule = true): void {
+  if (!ANIM) return
   const idle = pick(ANIM.idle)
   if (idle) switchTo(idle, { loop: true })
   if (schedule) scheduleIdleAction()
 }
 
 function playState(): void {
+  if (!ANIM) return
   if (state === 'needs-you') {
     const name = ANIM.workStatus[3]
     if (name) switchTo(name, { loop: true })
@@ -280,6 +290,7 @@ function enterState(next: PetSessionState): void {
 }
 
 function playClick(): void {
+  if (!ANIM) return
   const name = pick(ANIM.clicks)
   if (!name) return
   switchTo(name, { loop: false, kind: 'click' })
@@ -717,13 +728,24 @@ function build(): void {
   window.addEventListener('mouseleave', () => setMousePassthrough(true))
   setMousePassthrough(true)
 
-  void window.dshPet.getSnapshot().then((initial) => {
-    if (initial) {
-      snapshot = initial
+  void (async () => {
+    try {
+      const [initial, pack] = await Promise.all([
+        window.dshPet.getSnapshot(),
+        window.dshPet.getPack()
+      ])
+      if (initial) snapshot = initial
+      packInfo = pack
+      ANIM = pack?.manifest ?? BUNDLED_MANIFEST
+      fallback.src = fallbackUrl()
       render()
+      playState()
+    } catch {
+      ANIM = BUNDLED_MANIFEST
+      render()
+      playState()
     }
-    playState()
-  })
+  })()
   window.dshPet.onSnapshot((next) => {
     snapshot = next
     render()
@@ -735,6 +757,7 @@ if (document.readyState === 'loading') {
 } else {
   build()
 }
+
 
 
 

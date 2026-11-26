@@ -79,11 +79,11 @@ body {
 }
 
 .pet-root {
-  --pet-button-width: 500px;
-  --pet-button-height: 300px;
-  --pet-card-width: 540px;
-  --pet-bubble-width: 320px;
-  --pet-bubble-shift: -40px;
+  --pet-button-width: 440px;
+  --pet-button-height: 264px;
+  --pet-card-width: 480px;
+  --pet-bubble-width: 290px;
+  --pet-bubble-shift: -34px;
   position: absolute;
   right: 20px;
   bottom: 20px;
@@ -94,27 +94,27 @@ body {
 }
 
 .pet-root[data-size='small'] {
-  --pet-button-width: 400px;
-  --pet-button-height: 240px;
-  --pet-card-width: 440px;
-  --pet-bubble-width: 270px;
-  --pet-bubble-shift: -32px;
+  --pet-button-width: 350px;
+  --pet-button-height: 210px;
+  --pet-card-width: 390px;
+  --pet-bubble-width: 240px;
+  --pet-bubble-shift: -28px;
 }
 
 .pet-root[data-size='medium'] {
-  --pet-button-width: 500px;
-  --pet-button-height: 300px;
-  --pet-card-width: 540px;
-  --pet-bubble-width: 320px;
-  --pet-bubble-shift: -40px;
+  --pet-button-width: 440px;
+  --pet-button-height: 264px;
+  --pet-card-width: 480px;
+  --pet-bubble-width: 290px;
+  --pet-bubble-shift: -34px;
 }
 
 .pet-root[data-size='large'] {
-  --pet-button-width: 600px;
-  --pet-button-height: 360px;
-  --pet-card-width: 640px;
-  --pet-bubble-width: 380px;
-  --pet-bubble-shift: -48px;
+  --pet-button-width: 520px;
+  --pet-button-height: 310px;
+  --pet-card-width: 560px;
+  --pet-bubble-width: 340px;
+  --pet-bubble-shift: -40px;
 }
 
 .pet-compact {

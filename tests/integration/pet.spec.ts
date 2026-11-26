@@ -84,8 +84,8 @@ test('pet starts large and collapsed, and X closes the panel', async () => {
 
   await expect(card).toBeHidden()
   const initial = await petBounds(app)
-  expect(initial?.width).toBe(600)
-  expect(initial?.height).toBe(430)
+  expect(initial?.width).toBe(520)
+  expect(initial?.height).toBe(375)
   const bubble = await pet.evaluate(() => {
     const element = document.querySelector('.pet-bubble')
     if (!element) return null
@@ -94,12 +94,12 @@ test('pet starts large and collapsed, and X closes the panel', async () => {
   })
   expect(bubble?.text ?? '').not.toBe('')
   expect(bubble?.top ?? -1).toBeGreaterThanOrEqual(0)
-  expect(bubble?.bottom ?? 999).toBeLessThanOrEqual(430)
+  expect(bubble?.bottom ?? 999).toBeLessThanOrEqual(375)
   const anchorBefore = await petAnchor(app)
 
   await pet.locator('.pet-button').click()
   await expect(card).toBeVisible()
-  await expect.poll(async () => (await petBounds(app))?.height, { timeout: 10_000 }).toBeGreaterThan(430)
+  await expect.poll(async () => (await petBounds(app))?.height, { timeout: 10_000 }).toBeGreaterThan(375)
   await pet.waitForTimeout(400)
   const anchorAfter = await petAnchor(app)
   expect(Math.abs((anchorAfter?.top ?? 0) - (anchorBefore?.top ?? 0))).toBeLessThanOrEqual(2)
@@ -107,6 +107,7 @@ test('pet starts large and collapsed, and X closes the panel', async () => {
 
   await pet.getByTitle('收起列表').click()
   await expect(card).toBeHidden()
-  await expect.poll(async () => (await petBounds(app))?.height, { timeout: 10_000 }).toBe(430)
+  await expect.poll(async () => (await petBounds(app))?.height, { timeout: 10_000 }).toBe(375)
 })
+
 

@@ -35,6 +35,7 @@ const api: DshRemoteApi = {
   updateSettings: (patch) =>
     ipcRenderer.invoke('settings:update', patch) as Promise<AppSettings>,
   openManager: () => ipcRenderer.invoke('app:open-manager') as Promise<void>,
+  openPetPackDir: () => ipcRenderer.invoke('app:open-pet-pack') as Promise<void>,
   openExternal: (url: string) =>
     ipcRenderer.invoke('app:open-external', url) as Promise<void>,
   listTabs: () => ipcRenderer.invoke('tabs:list') as Promise<TabInfo[]>,

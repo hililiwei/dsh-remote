@@ -12,9 +12,16 @@ import { configureAppSecurity } from './security'
 import { SessionManager } from './session-manager'
 import { TabManager } from './tab-manager'
 import { PetManager } from './pet/pet-manager'
+import {
+  ensurePetPackDir,
+  registerPetPackProtocol,
+  registerPetPackScheme,
+  startPetPackWatcher
+} from './pet/pet-pack'
 import { destroyTray, isTrayReady, refreshTray, setupTray } from './tray'
 
 applyUserDataOverride()
+registerPetPackScheme()
 app.setName(APP_NAME)
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
 
@@ -22,6 +29,7 @@ let store: ConfigStore | null = null
 let sessions: SessionManager | null = null
 let tabs: TabManager | null = null
 let pet: PetManager | null = null
+let stopPetPackWatcher: (() => void) | null = null
 let isQuitting = false
 
 function applyTheme(theme: ThemeMode): void {
@@ -91,7 +99,10 @@ async function bootstrap(): Promise<void> {
     refreshMenu: () => installMenu(deps),
     refreshTray: () => refreshTray(deps)
   })
+  ensurePetPackDir()
+  registerPetPackProtocol()
   pet.start()
+  stopPetPackWatcher = startPetPackWatcher(() => pet?.reloadPack())
 
   app.setAboutPanelOptions({
     applicationName: APP_NAME,
@@ -186,6 +197,8 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     isQuitting = true
+    stopPetPackWatcher?.()
+    stopPetPackWatcher = null
     void pet?.destroy()
     closeAllAuthWindows()
     tabs?.closeAll()

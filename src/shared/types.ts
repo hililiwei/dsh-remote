@@ -123,6 +123,7 @@ export interface DshRemoteApi {
   clearServerSession(id: string): Promise<void>
   updateSettings(patch: AppSettingsPatch): Promise<AppSettings>
   openManager(): Promise<void>
+  openPetPackDir(): Promise<void>
   openExternal(url: string): Promise<void>
   listTabs(): Promise<TabInfo[]>
   activateTab(id: string): Promise<void>

@@ -146,6 +146,23 @@ export default function SettingsPanel({
           </label>
         </div>
 
+        <div className="setting-row">
+          <div className="setting-row__text">
+            <span className="setting-row__title">宠物动作目录</span>
+            <span className="setting-row__desc">
+              把 WebM 放进该目录即可覆盖内置动作；新增动作时同时放一份 manifest.json。修改后宠物会自动重载。
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={() => void window.dshRemote.openPetPackDir()}
+            data-testid="settings-open-pet-pack"
+          >
+            打开目录
+          </button>
+        </div>
+
         <div className="setting-row setting-row--stack">
           <div className="setting-row__text">
             <span className="setting-row__title">宠物尺寸</span>
