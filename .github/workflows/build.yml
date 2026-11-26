@@ -42,7 +42,7 @@ jobs:
         run: npm run test:unit
 
       - name: Build NSIS installer
-        run: npm run dist:win
+        run: npm run build && npx electron-builder --win nsis --x64
 
       - name: Build portable ZIP installer
         run: npm run package:win-zip
