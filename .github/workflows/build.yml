@@ -1,0 +1,97 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows x64 installer
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      # The app is intentionally unsigned. Do not let electron-builder try to
+      # discover a signing certificate on the runner.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build NSIS installer
+        run: npm run dist:win
+
+      - name: Build portable ZIP installer
+        run: npm run package:win-zip
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-remote-windows-x64
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/*portable.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS universal dmg + zip
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      # Unsigned build: skip certificate auto-discovery so the job works
+      # without any Apple developer secrets.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build universal dmg + zip
+        run: npm run dist:mac
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-remote-macos-universal
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+          if-no-files-found: error
+          retention-days: 14
