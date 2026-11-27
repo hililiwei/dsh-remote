@@ -24,6 +24,59 @@ export interface HeadlessClientCallbacks {
   onStatus: (status: PetServerStatus, message?: string) => void
 }
 
+const ACTIVE_REFRESH_MS = 3000
+const IDLE_REFRESH_MS = 10_000
+
+function record(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
+/** Keep only the projection fields the pet actually reads. */
+function slimProjectionValues(values: unknown): Record<string, unknown> {
+  const source = record(values)
+  if (!source) return {}
+  const questions = record(source.userQuestions)
+  const active = questions?.active
+  const plan = record(source.plan)
+  return {
+    ...(Array.isArray(active) && active.length > 0
+      ? { userQuestions: { active: [true] } }
+      : {}),
+    ...(plan?.pending === true ? { plan: { pending: true } } : {}),
+    ...(typeof source.title === 'string' ? { title: source.title } : {})
+  }
+}
+
+function slimSession(raw: unknown): DshSessionSummary | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const item = raw as Record<string, unknown>
+  if (typeof item.sessionId !== 'string') return null
+  const projections = record(item.projections)
+  const values = slimProjectionValues(projections?.values)
+  return {
+    sessionId: item.sessionId,
+    ...(typeof item.updatedAt === 'number' ? { updatedAt: item.updatedAt } : {}),
+    ...(typeof item.running === 'boolean' ? { running: item.running } : {}),
+    ...(typeof item.agentAvailable === 'boolean' ? { agentAvailable: item.agentAvailable } : {}),
+    ...(typeof item.blank === 'boolean' ? { blank: item.blank } : {}),
+    ...(typeof item.origin === 'string' ? { origin: item.origin } : {}),
+    ...(typeof item.cwd === 'string' ? { cwd: item.cwd } : {}),
+    ...(typeof item.title === 'string' ? { title: item.title } : {}),
+    ...(typeof item.displayTitle === 'string' ? { displayTitle: item.displayTitle } : {}),
+    ...(Object.keys(values).length > 0
+      ? {
+          projections: {
+            ...(typeof projections?.kind === 'string' ? { kind: projections.kind } : {}),
+            ...(typeof projections?.asOfSeq === 'number' ? { asOfSeq: projections.asOfSeq } : {}),
+            values
+          }
+        }
+      : {})
+  }
+}
+
 interface DshModules {
   Context: new () => unknown
   installConnection: (ctx: unknown, options: unknown) => void
@@ -146,6 +199,11 @@ export class HeadlessDshClient {
   private disposers: Array<() => Promise<void> | void> = []
   private status: PetServerStatus = 'connecting'
   private lastEmit = 0
+  private lastDigest = ''
+  private readonly stateCache = new Map<
+    string,
+    { updatedAt: number | undefined; running: boolean; pendingInput: string[] }
+  >()
 
   constructor(
     private readonly server: ServerProfile,
@@ -208,11 +266,8 @@ export class HeadlessDshClient {
       await this.waitForGeneration()
       if (this.stopped) return
       this.setStatus('online')
-      await this.refreshSessions()
       this.startWorkspaceFollow()
-      this.timer = setInterval(() => {
-        void this.refreshSessions()
-      }, 3000)
+      await this.refreshSessions()
       logInfo(`Pet headless client connected to ${this.server.baseUrl}`)
     } catch (error) {
       if (this.stopped) return
@@ -224,7 +279,7 @@ export class HeadlessDshClient {
   async stop(): Promise<void> {
     if (this.stopped) return
     this.stopped = true
-    if (this.timer) clearInterval(this.timer)
+    if (this.timer) clearTimeout(this.timer)
     this.timer = undefined
     this.browserSession.setCertificateVerifyProc(null)
     this.abort.abort()
@@ -325,28 +380,62 @@ export class HeadlessDshClient {
         return
       }
       const items = Array.isArray(result.value?.items) ? result.value.items : []
-      this.sessions = items.filter(
-        (item: unknown): item is DshSessionSummary =>
-          typeof item === 'object' && item !== null && typeof (item as { sessionId?: unknown }).sessionId === 'string'
-      )
-      const active = this.sessions.filter(
-        (session) => session.running === true || session.agentAvailable === true
-      )
-      await Promise.all(
-        active.map(async (session) => {
+      this.sessions = (items as unknown[])
+        .map((item: unknown): DshSessionSummary | null => slimSession(item))
+        .filter((item): item is DshSessionSummary => item !== null)
+
+      const present = new Set(this.sessions.map((session) => session.sessionId))
+      for (const id of this.stateCache.keys()) {
+        if (!present.has(id)) this.stateCache.delete(id)
+      }
+
+      const pending: DshSessionSummary[] = []
+      for (const session of this.sessions) {
+        const cached = this.stateCache.get(session.sessionId)
+        const needsState =
+          session.running === true ||
+          session.agentAvailable === true ||
+          (cached?.pendingInput.length ?? 0) > 0
+        if (!needsState) continue
+        if (
+          cached &&
+          cached.updatedAt === session.updatedAt &&
+          cached.running === (session.running === true) &&
+          cached.pendingInput.length === 0
+        ) {
+          continue
+        }
+        pending.push(session)
+      }
+
+      const queue = [...pending]
+      const worker = async (): Promise<void> => {
+        while (queue.length > 0) {
+          const session = queue.shift()
+          if (!session) return
           try {
             const state = await this.ctx.remote.session.state({ sessionId: session.sessionId })
             if (state?.ok && Array.isArray(state.value?.pendingInput)) {
-              session.pendingInput = state.value.pendingInput.filter(
+              const values = state.value.pendingInput.filter(
                 (input: unknown): input is 'approval' | 'question' | 'other' =>
                   input === 'approval' || input === 'question' || input === 'other'
               )
+              session.pendingInput = values
+              this.stateCache.set(session.sessionId, {
+                updatedAt: session.updatedAt,
+                running: session.running === true,
+                pendingInput: values
+              })
             }
           } catch {
             // Approval state is a best-effort enrichment; session.list remains authoritative.
           }
-        })
+        }
+      }
+      await Promise.all(
+        Array.from({ length: Math.min(4, queue.length) }, () => worker())
       )
+
       if (this.status !== 'online') this.setStatus('online')
       this.emitSnapshot()
     } catch (error) {
@@ -355,7 +444,27 @@ export class HeadlessDshClient {
       logError(`Pet session refresh failed for ${this.server.baseUrl}`, error)
     } finally {
       this.refreshing = false
+      this.scheduleRefresh()
     }
+  }
+
+  private scheduleRefresh(): void {
+    if (this.stopped) return
+    if (this.timer) clearTimeout(this.timer)
+    const active = this.sessions.some(
+      (session) =>
+        session.running === true ||
+        session.pendingInput?.some(
+          (input) => input === 'approval' || input === 'question'
+        ) === true
+    )
+    this.timer = setTimeout(
+      () => {
+        this.timer = undefined
+        void this.refreshSessions()
+      },
+      active ? ACTIVE_REFRESH_MS : IDLE_REFRESH_MS
+    )
   }
 
   private startWorkspaceFollow(): void {
@@ -386,7 +495,24 @@ export class HeadlessDshClient {
   private emitSnapshot(): void {
     if (this.stopped) return
     const now = Date.now()
+    const digest = JSON.stringify({
+      status: this.status,
+      workspaces: this.workspace.items,
+      archived: this.workspace.archivedSessionIds,
+      sessions: this.sessions.map((session) => [
+        session.sessionId,
+        session.updatedAt,
+        session.running,
+        session.agentAvailable,
+        session.pendingInput,
+        session.projections?.values?.title,
+        session.projections?.values?.userQuestions,
+        session.projections?.values?.plan
+      ])
+    })
+    if (digest === this.lastDigest) return
     if (now - this.lastEmit < 150 && this.status === 'online') return
+    this.lastDigest = digest
     this.lastEmit = now
     this.callbacks.onSnapshot({
       sessions: this.sessions,

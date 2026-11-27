@@ -164,6 +164,16 @@ function elementFor(slot: number): HTMLVideoElement {
   return slot === 0 ? videoA : videoB
 }
 
+function pauseVisuals(): void {
+  videoA.pause()
+  videoB.pause()
+}
+
+function resumeVisuals(): void {
+  const active = elementFor(front)
+  if (active.src) void active.play().catch(() => undefined)
+}
+
 function clearIdleTimer(): void {
   if (idleTimer !== undefined) {
     window.clearTimeout(idleTimer)
@@ -176,12 +186,12 @@ function scheduleIdleAction(): void {
   // Running has no dedicated animation set; it shares the idle rotation.
   // A completed task also returns to the idle rotation after its one-shot
   // celebration, so keep scheduling incidental actions for it as well.
-  if (state === 'needs-you') return
+  if (state === 'needs-you' || compact) return
   idleTimer = window.setTimeout(() => {
     idleTimer = undefined
     // Needs-you has its own attention animation; running/done share the
     // idle rotation, including incidental life actions.
-    if (state === 'needs-you') return
+    if (state === 'needs-you' || compact) return
     const action = randomCategoryAction()
     if (!action) {
       scheduleIdleAction()
@@ -192,14 +202,14 @@ function scheduleIdleAction(): void {
 }
 
 function playIdleBase(schedule = true): void {
-  if (!ANIM) return
+  if (!ANIM || compact) return
   const idle = pick(ANIM.idle)
   if (idle) switchTo(idle, { loop: true })
   if (schedule) scheduleIdleAction()
 }
 
 function playState(): void {
-  if (!ANIM) return
+  if (!ANIM || compact) return
   if (state === 'needs-you') {
     const name = ANIM.workStatus[3]
     if (name) switchTo(name, { loop: true })
@@ -254,6 +264,8 @@ function switchTo(
   const back = elementFor(backSlot)
   const old = elementFor(front)
   const serial = ++switchSerial
+  // Keep the old frame visible while the next clip loads, but do not decode it.
+  old.pause()
   back.loop = options.loop
   back.onended = null
   back.onerror = () => {
@@ -270,6 +282,8 @@ function switchTo(
     back.muted = true
     back.classList.add('is-front')
     old.classList.remove('is-front')
+    old.removeAttribute('src')
+    old.load()
     front = backSlot
     currentAnim = name
     currentLoop = options.loop
@@ -331,12 +345,14 @@ async function toggleCompact(): Promise<void> {
   compact = !compact
   root.classList.toggle('is-compact', compact)
   if (compact) {
+    pauseVisuals()
     if (open) await setOpen(false)
     renderCompact()
     await window.dshPet.setCompact(true).catch(() => undefined)
   } else {
     await window.dshPet.setCompact(false).catch(() => undefined)
     playState()
+    resumeVisuals()
   }
 }
 
@@ -463,8 +479,9 @@ function appendIdle(parent: HTMLElement, server: PetServerSnapshot, sessions: Pe
     renderCard(true)
   })
   parent.append(toggle)
+  if (!expanded) return
   const body = h('div', 'pet-idle-body')
-  body.hidden = !expanded
+  body.hidden = false
   const list = h('ul', 'pet-list')
   for (const session of sessions) {
     const item = h('li')
@@ -487,9 +504,24 @@ function syntheticServer(tabId: string, tabName: string): PetServerSnapshot {
   }
 }
 
+function cardSignatureOf(next: PetSnapshot): string {
+  const parts: string[] = [next.petSize]
+  for (const tab of next.openTabs) parts.push(`t:${tab.id}:${tab.active}:${tab.name}`)
+  for (const server of next.servers) {
+    parts.push(
+      `s:${server.serverId}:${server.status}:${server.message ?? ''}:${server.counts.needsYou},${server.counts.running},${server.counts.done},${server.counts.idle}`
+    )
+    for (const session of server.sessions) {
+      if (session.state === 'idle' && !idleExpanded.has(server.serverId)) continue
+      parts.push(`${session.id}:${session.state}:${session.updatedAt}:${session.title}`)
+    }
+  }
+  return parts.join('|')
+}
+
 function renderCard(force = false): void {
   if (!open) return
-  const signature = JSON.stringify(snapshot)
+  const signature = cardSignatureOf(snapshot)
   if (!force && signature === cardSignature) return
   cardSignature = signature
   const scroll = cardBody.scrollTop
@@ -718,7 +750,10 @@ function build(): void {
     if (event.key === 'Escape' && open) void setOpen(false)
   })
 
+  let mouseIgnoring = true
   const setMousePassthrough = (ignore: boolean): void => {
+    if (ignore === mouseIgnoring) return
+    mouseIgnoring = ignore
     void window.dshPet.setIgnoreMouseEvents(ignore)
   }
   window.addEventListener('mousemove', (event) => {
@@ -727,6 +762,10 @@ function build(): void {
   })
   window.addEventListener('mouseleave', () => setMousePassthrough(true))
   setMousePassthrough(true)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseVisuals()
+    else if (!compact) resumeVisuals()
+  })
 
   void (async () => {
     try {

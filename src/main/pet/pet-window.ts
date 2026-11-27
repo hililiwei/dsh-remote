@@ -185,24 +185,17 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
   current.setFocusable(true)
   current.setIgnoreMouseEvents(true, { forward: true })
 
-  let topGuard: NodeJS.Timeout | undefined
-  const startTopGuard = (): void => {
-    if (topGuard !== undefined) clearInterval(topGuard)
-    topGuard = setInterval(() => {
-      if (current.isDestroyed() || !alwaysOnTop) return
-      try {
-        current.setSkipTaskbar(true)
-        if (!current.isAlwaysOnTop()) current.setAlwaysOnTop(true, 'floating')
-      } catch {
-        // The window may be closing.
-      }
-    }, 1000)
+  const ensureTop = (): void => {
+    if (current.isDestroyed() || !alwaysOnTop) return
+    try {
+      current.setSkipTaskbar(true)
+      if (!current.isAlwaysOnTop()) current.setAlwaysOnTop(true, 'floating')
+    } catch {
+      // The window may be closing.
+    }
   }
-  const stopTopGuard = (): void => {
-    if (topGuard !== undefined) clearInterval(topGuard)
-    topGuard = undefined
-  }
-  if (alwaysOnTop) startTopGuard()
+  current.on('show', ensureTop)
+  current.on('focus', ensureTop)
 
   current.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   current.webContents.on('will-navigate', (event) => {
@@ -266,7 +259,6 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     current.hide()
   })
   current.on('closed', () => {
-    stopTopGuard()
     if (owner && !owner.isDestroyed()) owner.destroy()
     if (win === current) win = null
   })
@@ -315,8 +307,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
         win.setAlwaysOnTop(enabled)
       }
       win.setSkipTaskbar(true)
-      if (enabled) startTopGuard()
-      else stopTopGuard()
+      if (enabled) ensureTop()
     },
     setIgnoreMouseEvents(ignore: boolean): void {
       if (!win || win.isDestroyed()) return
@@ -431,8 +422,7 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
     destroy(): void {
       forceClose = true
       wantedVisible = false
-      stopTopGuard()
-        if (saveTimer) clearTimeout(saveTimer)
+      if (saveTimer) clearTimeout(saveTimer)
       if (win && !win.isDestroyed()) win.destroy()
       win = null
       if (owner && !owner.isDestroyed()) owner.destroy()

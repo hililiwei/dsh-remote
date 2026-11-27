@@ -369,10 +369,12 @@ export class TabManager {
         contextIsolation: true,
         sandbox: true,
         webSecurity: true,
-        spellcheck: true
+        spellcheck: false,
+        backgroundThrottling: true
       }
     })
     view.setBackgroundColor('#111318')
+    view.webContents.setBackgroundThrottling(true)
     view.setVisible(false)
     view.setBounds(this.viewBounds())
     shellWindow.contentView.addChildView(view)
