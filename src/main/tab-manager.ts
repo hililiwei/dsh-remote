@@ -45,6 +45,7 @@ interface TabEntry {
   view: WebContentsView
   status: TabStatus
   pending?: Promise<void>
+  needsLoad?: boolean
 }
 
 /**
@@ -87,6 +88,23 @@ export class TabManager {
         active: id === this.activeId
       }
     })
+  }
+
+  /**
+   * Recreate a tab from the saved tab list without loading its remote page.
+   * Inactive restored tabs stay as empty views until the user selects them,
+   * avoiding a burst of Chromium renderer/network work during startup.
+   */
+  async openRestored(server: ServerProfile, active: boolean): Promise<void> {
+    if (active || this.tabs.has(server.id)) {
+      await this.open(server)
+      return
+    }
+    await this.deps.sessions.applyProxy(server)
+    const entry = this.ensureTab(server)
+    entry.needsLoad = true
+    entry.status = 'loading'
+    this.sendTabs()
   }
 
   async open(server: ServerProfile): Promise<void> {
@@ -181,6 +199,7 @@ export class TabManager {
     const entry = this.tabs.get(serverId)
     if (!entry) return
     this.activeId = serverId
+    if (entry.needsLoad) this.loadEntry(entry.server, entry)
     this.deps.onServerViewed?.(serverId)
     for (const [id, candidate] of this.tabs) {
       candidate.view.setVisible(id === serverId)
@@ -643,20 +662,32 @@ export class TabManager {
 
     if (!this.watchedSessions.has(target)) {
       this.watchedSessions.add(target)
-      target.webRequest.onCompleted({ urls: ['*://*/*'] }, (details) => {
-        if (details.statusCode !== 401) return
-        if (details.resourceType === 'mainFrame') return
-        const current = this.deps.store.getServer(server.id)
-        if (!current) return
-        try {
-          const origin = new URL(details.url).origin
-          if (origin !== new URL(current.baseUrl).origin) return
-        } catch {
-          return
+      target.webRequest.onCompleted(
+        { urls: ['*://*/*'], types: ['xhr', 'webSocket'] },
+        (details) => {
+          if (details.statusCode !== 401) return
+          if (details.resourceType === 'mainFrame') return
+          const current = this.deps.store.getServer(server.id)
+          if (!current) return
+          try {
+            const origin = new URL(details.url).origin
+            if (origin !== new URL(current.baseUrl).origin) return
+          } catch {
+            return
+          }
+          this.promptAuth(server.id, 'expired')
         }
-        this.promptAuth(server.id, 'expired')
-      })
+      )
     }
+  }
+
+  private loadEntry(server: ServerProfile, entry: TabEntry): void {
+    if (!entry.needsLoad) return
+    entry.needsLoad = false
+    void this.navigate(server, entry, server.baseUrl).catch((error) => {
+      entry.needsLoad = true
+      logWarn(`Failed to load restored tab ${server.name}: ${String(error)}`)
+    })
   }
 
   private navigate(server: ServerProfile, entry: TabEntry, url: string): Promise<void> {

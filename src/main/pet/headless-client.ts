@@ -461,7 +461,9 @@ export class HeadlessDshClient {
         const stream = this.ctx.remote.workspace.follow(this.abort.signal)
         for await (const frame of stream) {
           if (this.stopped) break
-          this.workspace = applyWorkspaceFrame(this.workspace, frame)
+          const next = applyWorkspaceFrame(this.workspace, frame)
+          if (next === this.workspace) continue
+          this.workspace = next
           this.emitSnapshot()
         }
       } catch (error) {

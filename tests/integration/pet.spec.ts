@@ -1,160 +1,113 @@
-export type PetSize = 'small' | 'medium' | 'large'
+import { test, expect, type ElectronApplication } from '@playwright/test'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { launchApp } from './helpers'
 
-export const PET_SIZE_VALUES = ['small', 'medium', 'large'] as const
+let app: ElectronApplication
+let userData: string
 
-export function isPetSize(value: unknown): value is PetSize {
-  return value === 'small' || value === 'medium' || value === 'large'
+async function petPage(application: ElectronApplication) {
+  let page
+  await expect
+    .poll(
+      () => {
+        page = application.windows().find((candidate) => candidate.url().includes('pet.html'))
+        return Boolean(page)
+      },
+      { timeout: 15_000, intervals: [200, 400, 800] }
+    )
+    .toBe(true)
+  await page!.waitForLoadState('domcontentloaded')
+  return page!
 }
 
-export type PetSessionState = 'needs-you' | 'running' | 'done' | 'idle'
-
-export type PetServerStatus =
-  | 'connecting'
-  | 'online'
-  | 'auth-required'
-  | 'offline'
-  | 'error'
-
-export interface PetCounts {
-  needsYou: number
-  running: number
-  done: number
-  idle: number
-  total: number
+async function petBounds(application: ElectronApplication) {
+  return application.evaluate(({ BrowserWindow }) => {
+    const pet = BrowserWindow.getAllWindows().find((window) =>
+      window.webContents.getURL().includes('pet.html')
+    )
+    return pet ? pet.getBounds() : null
+  })
 }
 
-export interface PetWorkspace {
-  id: string
-  title: string
-  pathLabel?: string
+async function petAnchor(application: ElectronApplication) {
+  return application.evaluate(async ({ BrowserWindow }) => {
+    const pet = BrowserWindow.getAllWindows().find((window) =>
+      window.webContents.getURL().includes('pet.html')
+    )
+    if (!pet) return null
+    const bounds = pet.getBounds()
+    const rect = await pet.webContents.executeJavaScript(
+      `(() => { const r = document.querySelector('.pet-button')?.getBoundingClientRect(); return r ? { top: r.top, bottom: r.bottom, scrollY: window.scrollY, innerHeight: window.innerHeight, docHeight: document.documentElement.scrollHeight } : null })()`
+    )
+    return rect
+      ? {
+          top: bounds.y + rect.top,
+          bottom: bounds.y + rect.bottom,
+          scrollY: rect.scrollY,
+          innerHeight: rect.innerHeight,
+          docHeight: rect.docHeight
+        }
+      : null
+  })
 }
 
-export interface PetSession {
-  id: string
-  serverId: string
-  serverName: string
-  title: string
-  workspaceId: string
-  workspaceTitle: string
-  state: PetSessionState
-  updatedAt: number
+async function waitForPetVisible(application: ElectronApplication) {
+  await expect
+    .poll(
+      () =>
+        application.evaluate(({ BrowserWindow }) => {
+          const pet = BrowserWindow.getAllWindows().find((window) =>
+            window.webContents.getURL().includes('pet.html')
+          )
+          return Boolean(pet?.isVisible())
+        }),
+      { timeout: 15_000, intervals: [200, 400, 800] }
+    )
+    .toBe(true)
 }
 
-export interface PetServerSnapshot {
-  serverId: string
-  serverName: string
-  baseUrl: string
-  status: PetServerStatus
-  message?: string
-  workspaces: PetWorkspace[]
-  sessions: PetSession[]
-  counts: PetCounts
-}
-
-export interface PetOpenTab {
-  id: string
-  name: string
-  active: boolean
-}
-
-export interface PetAnimationCategory {
-  id: string
-  weight: number
-  actions: string[]
-}
-
-export interface PetAnimationManifest {
-  idle: string[]
-  clicks: string[]
-  categories: PetAnimationCategory[]
-  workStatus: string[]
-}
-
-export interface PetPackInfo {
-  manifest: PetAnimationManifest
-  source: 'bundled' | 'external'
-  baseUrl: string
-  files: string[]
-  portrait: string | null
-}
-
-export interface PetSnapshot {
-  servers: PetServerSnapshot[]
-  openTabs: PetOpenTab[]
-  counts: PetCounts
-  petSize: PetSize
-  updatedAt: number
-}
-
-export interface DshSessionSummary {
-  sessionId: string
-  updatedAt?: number
-  running?: boolean
-  agentAvailable?: boolean
-  pendingInput?: Array<'approval' | 'question' | 'other'>
-  blank?: boolean
-  origin?: string
-  cwd?: string
-  title?: string
-  displayTitle?: string
-  projections?: {
-    kind?: string
-    asOfSeq?: number
-    values?: Record<string, unknown>
-  }
-}
-
-export interface DshWorkspaceItem {
-  workspaceId: string
-  title?: string
-  path?: string
-  sessionIds?: string[]
-}
-
-export interface DshWorkspaceBaseline {
-  items: DshWorkspaceItem[]
-  archivedSessionIds: string[]
-}
-
-export const EMPTY_COUNTS: PetCounts = Object.freeze({
-  needsYou: 0,
-  running: 0,
-  done: 0,
-  idle: 0,
-  total: 0
+test.beforeEach(async () => {
+  userData = await mkdtemp(join(process.cwd(), '.tmp-e2e-'))
+  app = await launchApp(userData)
 })
 
-export function addCounts(left: PetCounts, right: PetCounts): PetCounts {
-  return {
-    needsYou: left.needsYou + right.needsYou,
-    running: left.running + right.running,
-    done: left.done + right.done,
-    idle: left.idle + right.idle,
-    total: left.total + right.total
-  }
-}
+test.afterEach(async () => {
+  await app.close()
+  await rm(userData, { recursive: true, force: true })
+})
 
-export interface PetCardBounds {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+test('pet starts large and collapsed, and X closes the panel', async () => {
+  const pet = await petPage(app)
+  await waitForPetVisible(app)
+  const card = pet.locator('.pet-card')
 
-export interface DshPetApi {
-  getSnapshot(): Promise<PetSnapshot>
-  onSnapshot(callback: (snapshot: PetSnapshot) => void): () => void
-  focusServer(serverId: string): Promise<void>
-  focusSession(serverId: string, sessionId: string): Promise<void>
-  hide(): Promise<void>
-  openManager(): Promise<void>
-  getPack(): Promise<PetPackInfo>
-  openPackDir(): Promise<void>
-  setIgnoreMouseEvents(ignore: boolean): Promise<void>
-  setExpanded(expanded: boolean): Promise<void>
-  setCompact(compact: boolean): Promise<void>
-  setCardBounds(bounds: PetCardBounds | null): void
-  beginDrag(): void
-  dragTo(screenX: number, screenY: number): void
-  endDrag(): void
-}
+  await expect(card).toBeHidden()
+  const initial = await petBounds(app)
+  expect(initial?.width).toBe(520)
+  expect(initial?.height).toBe(375)
+  const bubble = await pet.evaluate(() => {
+    const element = document.querySelector('.pet-bubble')
+    if (!element) return null
+    const rect = element.getBoundingClientRect()
+    return { top: rect.top, bottom: rect.bottom, text: element.textContent ?? '' }
+  })
+  expect(bubble?.text ?? '').not.toBe('')
+  expect(bubble?.top ?? -1).toBeGreaterThanOrEqual(0)
+  expect(bubble?.bottom ?? 999).toBeLessThanOrEqual(375)
+  const anchorBefore = await petAnchor(app)
+
+  await pet.locator('.pet-button').click()
+  await expect(card).toBeVisible()
+  await expect.poll(async () => (await petBounds(app))?.height, { timeout: 10_000 }).toBeGreaterThan(375)
+  await pet.waitForTimeout(400)
+  const anchorAfter = await petAnchor(app)
+  expect(Math.abs((anchorAfter?.top ?? 0) - (anchorBefore?.top ?? 0))).toBeLessThanOrEqual(2)
+  expect(Math.abs((anchorAfter?.bottom ?? 0) - (anchorBefore?.bottom ?? 0))).toBeLessThanOrEqual(2)
+
+  await pet.getByTitle('收起列表').click()
+  await expect(card).toBeHidden()
+  await expect.poll(async () => (await petBounds(app))?.height, { timeout: 10_000 }).toBe(375)
+})
+
+

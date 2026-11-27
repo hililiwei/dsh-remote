@@ -87,7 +87,11 @@ test('opens two servers in tabs, switches, restores and closes them', async () =
     const restored = await tabsPage(app)
     await expect(restored.locator('.tab')).toHaveCount(2)
     await waitForRemoteText(app, fake.baseUrl, 'Fake DSH')
+    // Restored inactive tabs are intentionally lazy: load on first selection.
+    await restored.getByTestId(`tab-${two.id}`).click()
+    await expect(restored.getByTestId(`tab-${two.id}`)).toHaveAttribute('aria-selected', 'true')
     await waitForRemoteText(app, secondFake.baseUrl, 'Fake DSH')
+    await restored.getByTestId(`tab-${one.id}`).click()
     await expect
       .poll(() => visibleRemoteUrl(app!), { timeout: 10_000 })
       .toBe(fake.baseUrl)

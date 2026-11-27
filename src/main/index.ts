@@ -139,17 +139,15 @@ async function bootstrap(): Promise<void> {
 
     if (toOpen.length > 0) {
       try {
-        await Promise.all(
-          toOpen.map((server) =>
-            tabs!.open(server).catch((error) => {
-              logWarn(`Auto-connect failed for ${server.name}: ${String(error)}`)
-            })
-          )
-        )
         const active =
           restored && settings.activeTabId && store!.getServer(settings.activeTabId)
             ? settings.activeTabId
             : toOpen[0].id
+        for (const server of toOpen) {
+          await tabs!.openRestored(server, server.id === active).catch((error) => {
+            logWarn(`Auto-connect failed for ${server.name}: ${String(error)}`)
+          })
+        }
         tabs!.activate(active)
         return
       } catch (error) {

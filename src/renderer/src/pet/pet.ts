@@ -186,12 +186,12 @@ function scheduleIdleAction(): void {
   // Running has no dedicated animation set; it shares the idle rotation.
   // A completed task also returns to the idle rotation after its one-shot
   // celebration, so keep scheduling incidental actions for it as well.
-  if (state === 'needs-you' || compact) return
+  if (state === 'needs-you' || compact || document.hidden) return
   idleTimer = window.setTimeout(() => {
     idleTimer = undefined
     // Needs-you has its own attention animation; running/done share the
     // idle rotation, including incidental life actions.
-    if (state === 'needs-you' || compact) return
+    if (state === 'needs-you' || compact || document.hidden) return
     const action = randomCategoryAction()
     if (!action) {
       scheduleIdleAction()
@@ -209,7 +209,7 @@ function playIdleBase(schedule = true): void {
 }
 
 function playState(): void {
-  if (!ANIM || compact) return
+  if (!ANIM || compact || document.hidden) return
   if (state === 'needs-you') {
     const name = ANIM.workStatus[3]
     if (name) switchTo(name, { loop: true })
@@ -694,6 +694,9 @@ function build(): void {
   fallback.alt = '桌面宠物'
   fallback.draggable = false
   button.append(fallback, videoA, videoB)
+  const hitbox = h('div', 'pet-hitbox')
+  hitbox.setAttribute('aria-hidden', 'true')
+  button.append(hitbox)
   badge = h('span', 'pet-badge')
   badge.hidden = true
   button.append(badge)
@@ -756,15 +759,24 @@ function build(): void {
     mouseIgnoring = ignore
     void window.dshPet.setIgnoreMouseEvents(ignore)
   }
+
   window.addEventListener('mousemove', (event) => {
     const target = event.target instanceof Element ? event.target : null
-    setMousePassthrough(!target?.closest('.pet-button, .pet-card, .pet-compact'))
+    const overCard = Boolean(target?.closest('.pet-card, .pet-compact'))
+    const overBadge = Boolean(target?.closest('.pet-badge'))
+    const overHitbox = Boolean(target?.closest('.pet-hitbox'))
+    setMousePassthrough(!(overCard || overBadge || overHitbox))
   })
   window.addEventListener('mouseleave', () => setMousePassthrough(true))
   setMousePassthrough(true)
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pauseVisuals()
-    else if (!compact) resumeVisuals()
+    if (document.hidden) {
+      pauseVisuals()
+    } else if (!compact) {
+      playState()
+      resumeVisuals()
+      scheduleIdleAction()
+    }
   })
 
   void (async () => {
