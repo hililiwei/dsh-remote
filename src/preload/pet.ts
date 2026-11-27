@@ -11,6 +11,8 @@ const api: DshPetApi = {
     return () => ipcRenderer.removeListener('pet:snapshot', listener)
   },
   focusServer: (serverId) => ipcRenderer.invoke('pet:focus-server', serverId) as Promise<void>,
+  focusSession: (serverId, sessionId) =>
+    ipcRenderer.invoke('pet:focus-session', serverId, sessionId) as Promise<void>,
   hide: () => ipcRenderer.invoke('pet:hide') as Promise<void>,
   openManager: () => ipcRenderer.invoke('pet:open-manager') as Promise<void>,
   getPack: () => ipcRenderer.invoke('pet:pack') as Promise<import('../shared/pet').PetPackInfo>,

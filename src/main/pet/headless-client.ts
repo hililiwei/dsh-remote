@@ -221,16 +221,11 @@ export class HeadlessDshClient {
 
   async start(): Promise<void> {
     if (this.server.allowInvalidCertificate) {
-      let host = ''
-      try {
-        host = new URL(this.server.baseUrl).hostname
-      } catch {
-        // The URL was validated before the server was saved.
-      }
       // `session.fetch` does not emit the page-level certificate-error event.
-      // Trust only the configured host, and only when the user opted in.
-      this.browserSession.setCertificateVerifyProc((request, callback) => {
-        callback(host !== '' && request.hostname === host ? 0 : -3)
+      // This session belongs to one saved server, and the user explicitly
+      // trusted that server's certificate, so accept its TLS chain here.
+      this.browserSession.setCertificateVerifyProc((_request, callback) => {
+        callback(0)
       })
     }
     const cookies = await this.browserSession.cookies.get({ url: this.server.baseUrl })
@@ -396,16 +391,7 @@ export class HeadlessDshClient {
           session.running === true ||
           session.agentAvailable === true ||
           (cached?.pendingInput.length ?? 0) > 0
-        if (!needsState) continue
-        if (
-          cached &&
-          cached.updatedAt === session.updatedAt &&
-          cached.running === (session.running === true) &&
-          cached.pendingInput.length === 0
-        ) {
-          continue
-        }
-        pending.push(session)
+        if (needsState) pending.push(session)
       }
 
       const queue = [...pending]
@@ -454,6 +440,7 @@ export class HeadlessDshClient {
     const active = this.sessions.some(
       (session) =>
         session.running === true ||
+        session.agentAvailable === true ||
         session.pendingInput?.some(
           (input) => input === 'approval' || input === 'question'
         ) === true

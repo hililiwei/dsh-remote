@@ -22,19 +22,35 @@ export class SessionManager {
 
   get(server: ServerProfile): Session {
     const existing = this.sessions.get(server.id)
-    if (existing) return existing
+    if (existing) {
+      this.applyCertificatePolicy(existing, server)
+      return existing
+    }
 
     const created = electronSession.fromPartition(partitionFor(server.id))
+    this.applyCertificatePolicy(created, server)
     this.sessions.set(server.id, created)
     return created
   }
 
   async applyProxy(server: ServerProfile): Promise<void> {
     const target = this.get(server)
+    this.applyCertificatePolicy(target, server)
     await target.setProxy({
       mode: server.proxyMode === 'direct' ? 'direct' : 'system'
     })
     await target.closeAllConnections()
+  }
+
+  private applyCertificatePolicy(target: Session, server: ServerProfile): void {
+    if (server.allowInvalidCertificate) {
+      // The user explicitly trusted this saved server. Set the policy before
+      // the session makes its first TLS request so Chromium never caches a
+      // certificate failure for this partition.
+      target.setCertificateVerifyProc((_request, callback) => callback(0))
+    } else {
+      target.setCertificateVerifyProc(null)
+    }
   }
 
   async clear(serverId: string): Promise<void> {

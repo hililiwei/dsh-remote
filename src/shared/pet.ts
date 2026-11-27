@@ -145,6 +145,7 @@ export interface DshPetApi {
   getSnapshot(): Promise<PetSnapshot>
   onSnapshot(callback: (snapshot: PetSnapshot) => void): () => void
   focusServer(serverId: string): Promise<void>
+  focusSession(serverId: string, sessionId: string): Promise<void>
   hide(): Promise<void>
   openManager(): Promise<void>
   getPack(): Promise<PetPackInfo>

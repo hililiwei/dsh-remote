@@ -139,6 +139,20 @@ export class PetManager {
     this.window?.endDrag()
   }
 
+  async focusSession(serverId: string, sessionId: string): Promise<void> {
+    const state = this.states.get(serverId)
+    const summary = state?.sessions.find((session) => session.sessionId === sessionId)
+    const title =
+      summary?.displayTitle?.trim() ||
+      summary?.title?.trim() ||
+      ''
+    await this.deps.tabs.focusSession(serverId, sessionId, title).catch((error) => {
+      logWarn(`Pet failed to focus session ${sessionId}: ${String(error)}`)
+    })
+    this.handleServerViewed(serverId)
+    this.publish()
+  }
+
   async focusServer(serverId: string): Promise<void> {
     const server = this.deps.store.getServer(serverId)
     if (!server) return
@@ -168,7 +182,15 @@ export class PetManager {
   }
 
   /** Called by the tab bar after a tab opens, closes, or becomes active. */
-handleTabsChanged(): void {
+  handleTabsChanged(): void {
+    this.publish()
+  }
+
+  /** The user opened or focused this server, so its completed marks were seen. */
+  handleServerViewed(serverId: string): void {
+    const done = this.done.get(serverId)
+    if (!done || done.size === 0) return
+    this.done.set(serverId, new Set())
     this.publish()
   }
 

@@ -436,7 +436,7 @@ function row(session: PetSession): HTMLButtonElement {
   item.append(h('span', 'pet-row-state', STATE_LABEL[session.state]))
   item.append(h('span', 'pet-row-time', relativeTime(session.updatedAt)))
   item.addEventListener('click', () => {
-    void window.dshPet.focusServer(session.serverId)
+    void window.dshPet.focusSession(session.serverId, session.id)
   })
   return item
 }

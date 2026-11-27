@@ -76,7 +76,8 @@ async function bootstrap(): Promise<void> {
     store,
     sessions,
     onServersChanged: afterServersChanged,
-    onTabsChanged: () => pet?.handleTabsChanged()
+    onTabsChanged: () => pet?.handleTabsChanged(),
+    onServerViewed: (serverId) => pet?.handleServerViewed(serverId)
   })
   pet = new PetManager({
     store,

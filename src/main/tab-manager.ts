@@ -19,7 +19,7 @@ import {
   resolveServerNavigation
 } from './connection'
 import type { ConfigStore } from './config-store'
-import { logError, logInfo } from './logger'
+import { logError, logInfo, logWarn } from './logger'
 import { hideManager, showManager } from './manager-window'
 import { appIconFile, preloadFile } from './paths'
 import { loadRenderer } from './renderer-loader'
@@ -37,6 +37,7 @@ export interface TabManagerDeps {
   sessions: SessionManager
   onServersChanged: () => void
   onTabsChanged?: () => void
+  onServerViewed?: (serverId: string) => void
 }
 
 interface TabEntry {
@@ -128,6 +129,43 @@ export class TabManager {
     hideManager()
   }
 
+  async focusSession(serverId: string, sessionId: string, title: string): Promise<void> {
+    const server = this.deps.store.getServer(serverId)
+    if (!server) return
+    await this.open(server)
+    const entry = this.tabs.get(serverId)
+    if (!entry) return
+    if (entry.pending) await entry.pending.catch(() => undefined)
+    this.activate(serverId)
+    this.showShell()
+
+    const script = `(() => {
+      const id = ${JSON.stringify(sessionId)};
+      const title = ${JSON.stringify(title)};
+      const rows = [...document.querySelectorAll('[data-row-key]')];
+      const row = rows.find((element) => {
+        const key = element.getAttribute('data-row-key') ?? '';
+        return key === 'session:' + id || key === id || key.endsWith(':' + id);
+      });
+      if (row) { row.click(); return true; }
+      const byTitle = [...document.querySelectorAll('[role="treeitem"]')]
+        .find((element) => title !== '' && (element.textContent ?? '').includes(title));
+      if (byTitle) { byTitle.click(); return true; }
+      return false;
+    })()`
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      try {
+        const found = await entry.view.webContents.executeJavaScript(script, true)
+        if (found) return
+      } catch {
+        // The remote page may still be navigating.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    logWarn(`Pet could not locate session ${sessionId} in ${server.name}`)
+  }
+
   async retry(server: ServerProfile): Promise<void> {
     const entry = this.tabs.get(server.id)
     if (!entry) {
@@ -143,6 +181,7 @@ export class TabManager {
     const entry = this.tabs.get(serverId)
     if (!entry) return
     this.activeId = serverId
+    this.deps.onServerViewed?.(serverId)
     for (const [id, candidate] of this.tabs) {
       candidate.view.setVisible(id === serverId)
     }
@@ -520,6 +559,14 @@ export class TabManager {
     }
     contents.on('will-navigate', blockUnsafeNavigation)
     contents.on('will-redirect', blockUnsafeNavigation)
+    contents.on('focus', () => {
+      if (this.activeId === server.id) this.deps.onServerViewed?.(server.id)
+    })
+    contents.on('before-mouse-event', (_event, mouse) => {
+      if (mouse.type === 'mouseDown' && this.activeId === server.id) {
+        this.deps.onServerViewed?.(server.id)
+      }
+    })
 
     contents.on('did-navigate', (_event, _url, httpResponseCode) => {
       if (httpResponseCode === 401) {
