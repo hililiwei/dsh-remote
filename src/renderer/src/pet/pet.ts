@@ -51,6 +51,9 @@ let snapshot: PetSnapshot = {
   petSize: 'medium',
   updatedAt: 0
 }
+let details: PetSnapshot | null = null
+let detailsLoading: Promise<void> | null = null
+let lastDetailsAt = 0
 let root: HTMLDivElement
 let bubble: HTMLDivElement
 let compactBar: HTMLDivElement
@@ -186,12 +189,12 @@ function scheduleIdleAction(): void {
   // Running has no dedicated animation set; it shares the idle rotation.
   // A completed task also returns to the idle rotation after its one-shot
   // celebration, so keep scheduling incidental actions for it as well.
-  if (state === 'needs-you' || compact || document.hidden) return
+  if (state === 'needs-you' || compact) return
   idleTimer = window.setTimeout(() => {
     idleTimer = undefined
     // Needs-you has its own attention animation; running/done share the
     // idle rotation, including incidental life actions.
-    if (state === 'needs-you' || compact || document.hidden) return
+    if (state === 'needs-you' || compact) return
     const action = randomCategoryAction()
     if (!action) {
       scheduleIdleAction()
@@ -209,7 +212,7 @@ function playIdleBase(schedule = true): void {
 }
 
 function playState(): void {
-  if (!ANIM || compact || document.hidden) return
+  if (!ANIM || compact) return
   if (state === 'needs-you') {
     const name = ANIM.workStatus[3]
     if (name) switchTo(name, { loop: true })
@@ -375,6 +378,11 @@ let openTransition = 0
 async function setOpen(next: boolean): Promise<void> {
   const transition = ++openTransition
   open = next
+  if (next) void refreshDetails()
+  else {
+    details = null
+    lastDetailsAt = 0
+  }
   if (!next) {
     card.hidden = true
     clearAutoClose()
@@ -476,7 +484,7 @@ function appendIdle(parent: HTMLElement, server: PetServerSnapshot, sessions: Pe
   toggle.addEventListener('click', () => {
     if (idleExpanded.has(server.serverId)) idleExpanded.delete(server.serverId)
     else idleExpanded.add(server.serverId)
-    renderCard(true)
+    void refreshDetails().then(() => renderCard(true))
   })
   parent.append(toggle)
   if (!expanded) return
@@ -519,23 +527,68 @@ function cardSignatureOf(next: PetSnapshot): string {
   return parts.join('|')
 }
 
+function refreshDetails(): Promise<void> {
+  if (detailsLoading) return detailsLoading
+  detailsLoading = window.dshPet
+    .getDetails()
+    .then((next) => {
+      if (!next) return
+      details = next
+      if (!open) {
+        details = null
+        return
+      }
+      lastDetailsAt = Date.now()
+      renderCard(true)
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      detailsLoading = null
+    })
+  return detailsLoading
+}
+
+function mergedCardSnapshot(): PetSnapshot {
+  if (!details) return snapshot
+  const fullById = new Map(details.servers.map((server) => [server.serverId, server]))
+  return {
+    ...snapshot,
+    servers: snapshot.servers.map((summary) => {
+      const full = fullById.get(summary.serverId)
+      if (!full) return summary
+      const activeIds = new Set(summary.sessions.map((session) => session.id))
+      return {
+        ...summary,
+        workspaces: full.workspaces,
+        sessions: [
+          ...summary.sessions,
+          ...full.sessions.filter(
+            (session) => session.state === 'idle' && !activeIds.has(session.id)
+          )
+        ]
+      }
+    })
+  }
+}
+
 function renderCard(force = false): void {
   if (!open) return
-  const signature = cardSignatureOf(snapshot)
+  const source = mergedCardSnapshot()
+  const signature = cardSignatureOf(source)
   if (!force && signature === cardSignature) return
   cardSignature = signature
   const scroll = cardBody.scrollTop
   cardBody.replaceChildren()
 
-  if (snapshot.openTabs.length === 0) {
+  if (source.openTabs.length === 0) {
     cardBody.append(h('p', 'pet-empty', '没有打开的远程标签页。先在服务器管理里连接一个。'))
     cardBody.scrollTop = scroll
     return
   }
 
-  for (const tab of snapshot.openTabs) {
+  for (const tab of source.openTabs) {
     const server =
-      snapshot.servers.find((candidate) => candidate.serverId === tab.id) ??
+      source.servers.find((candidate) => candidate.serverId === tab.id) ??
       syntheticServer(tab.id, tab.name)
     const section = h('section', 'pet-tab')
     const head = h('button', 'pet-tab-head')
@@ -623,6 +676,7 @@ function render(): void {
   renderCounts()
   renderCompact()
   renderCard()
+  if (open && Date.now() - lastDetailsAt > 30_000) void refreshDetails()
   setBubble(summaryText(snapshot.counts, snapshot.servers.length))
 }
 
@@ -769,15 +823,7 @@ function build(): void {
   })
   window.addEventListener('mouseleave', () => setMousePassthrough(true))
   setMousePassthrough(true)
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      pauseVisuals()
-    } else if (!compact) {
-      playState()
-      resumeVisuals()
-      scheduleIdleAction()
-    }
-  })
+
 
   void (async () => {
     try {

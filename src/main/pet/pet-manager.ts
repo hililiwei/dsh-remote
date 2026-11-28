@@ -9,6 +9,16 @@ import { advanceCompletionState, aggregateServerSnapshot, mergePetSnapshots } fr
 import { HeadlessDshClient, type HeadlessServerSnapshot } from './headless-client'
 import { createPetWindow, type PetWindowController } from './pet-window'
 
+function summarizeSnapshot(snapshot: PetSnapshot): PetSnapshot {
+  return {
+    ...snapshot,
+    servers: snapshot.servers.map((server) => ({
+      ...server,
+      sessions: server.sessions.filter((session) => session.state !== 'idle')
+    }))
+  }
+}
+
 interface ServerState {
   status: PetServerStatus
   message?: string
@@ -92,6 +102,10 @@ export class PetManager {
   }
 
   getSnapshot(): PetSnapshot {
+    return summarizeSnapshot(this.snapshot)
+  }
+
+  getDetails(): PetSnapshot {
     return this.snapshot
   }
 
@@ -183,11 +197,25 @@ export class PetManager {
 
   /** Called by the tab bar after a tab opens, closes, or becomes active. */
   handleTabsChanged(): void {
+    const activeId = this.deps.tabs.listTabs().find((tab) => tab.active)?.id
+    for (const [id, client] of this.clients) {
+      client.setForeground(id === activeId)
+    }
+    this.publish()
+  }
+
+  handleSessionCompleted(serverId: string, sessionId: string): void {
+    const state = this.states.get(serverId)
+    if (!state?.sessions.some((session) => session.sessionId === sessionId)) return
+    const done = this.done.get(serverId) ?? new Set<string>()
+    done.add(sessionId)
+    this.done.set(serverId, done)
     this.publish()
   }
 
   /** The user opened or focused this server, so its completed marks were seen. */
   handleServerViewed(serverId: string): void {
+    this.clients.get(serverId)?.refreshNow()
     const done = this.done.get(serverId)
     if (!done || done.size === 0) return
     this.done.set(serverId, new Set())
@@ -213,7 +241,7 @@ export class PetManager {
   private ensureWindowShown(): void {
     if (!this.window) return
     this.window.show()
-    this.window.send(this.snapshot)
+    this.window.send(summarizeSnapshot(this.snapshot))
   }
 
   private async reconcileServers(): Promise<void> {
@@ -240,9 +268,13 @@ export class PetManager {
     this.publish()
     const client = new HeadlessDshClient(server, this.deps.sessions.get(server), {
       onSnapshot: (snapshot) => this.handleSnapshot(server, snapshot),
-      onStatus: (status, message) => this.handleStatus(server, status, message)
+      onStatus: (status, message) => this.handleStatus(server, status, message),
+      onCompletion: (sessionId) => this.handleSessionCompleted(server.id, sessionId)
     })
     this.clients.set(server.id, client)
+    client.setForeground(
+      this.deps.tabs.listTabs().some((tab) => tab.active && tab.id === server.id)
+    )
     try {
       await client.start()
     } catch (error) {
@@ -329,7 +361,7 @@ export class PetManager {
       openTabs,
       this.settings.pet.size
     )
-    this.window?.send(this.snapshot)
+    this.window?.send(summarizeSnapshot(this.snapshot))
   }
 
   private stopAll(): void {

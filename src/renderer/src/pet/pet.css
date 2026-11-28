@@ -644,7 +644,6 @@ body {
   border: 0;
   background: transparent;
   cursor: pointer;
-  filter: drop-shadow(0 8px 16px rgb(15 23 42 / 0.2));
   -webkit-app-region: no-drag;
   pointer-events: none;
 }

@@ -69,6 +69,7 @@ const CHANNELS = [
   'tabs:reload',
   'tabs:menu',
   'pet:snapshot',
+  'pet:details',
   'pet:focus-server',
   'pet:focus-session',
   'pet:hide',
@@ -405,6 +406,7 @@ export function registerIpc(deps: IpcDeps): void {
   })
 
   handle('pet:snapshot', () => pet.getSnapshot())
+  handle('pet:details', () => pet.getDetails())
 
   handle('pet:focus-server', async (_event, rawId): Promise<boolean> => {
     const id = requireString(rawId, '服务器 ID')

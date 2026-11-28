@@ -3,6 +3,7 @@ import type { DshPetApi, PetSnapshot } from '../shared/pet'
 
 const api: DshPetApi = {
   getSnapshot: () => ipcRenderer.invoke('pet:snapshot') as Promise<PetSnapshot>,
+  getDetails: () => ipcRenderer.invoke('pet:details') as Promise<PetSnapshot>,
   onSnapshot: (callback) => {
     const listener = (_event: IpcRendererEvent, snapshot: PetSnapshot): void => {
       callback(snapshot)

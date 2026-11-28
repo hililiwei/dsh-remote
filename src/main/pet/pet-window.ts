@@ -167,7 +167,9 @@ export function createPetWindow(store: ConfigStore): PetWindowController {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      spellcheck: false
+      spellcheck: false,
+      // The desktop pet should keep animating while occluded or minimized.
+      backgroundThrottling: false
     }
   })
 
